@@ -1,0 +1,568 @@
+/* =========================================================
+   COMPANY PAGE
+========================================================= */
+
+.company-page {
+    width: 100%;
+    min-height: 100%;
+    padding: 28px 32px;
+    box-sizing: border-box;
+    background: #f7f8fc;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.company-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.company-header h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.company-header p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   ADD BUTTON
+========================================================= */
+
+.company-add-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #2563eb;
+    color: white;
+    transition: 0.2s ease;
+}
+
+.company-add-btn:hover {
+    background: #1d4ed8;
+}
+
+
+/* =========================================================
+   COMPANY CARD
+========================================================= */
+
+.company-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 22px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.company-card-title {
+    padding: 18px 22px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+    background: #fafbfc;
+}
+
+
+/* =========================================================
+   FIELD ROW
+========================================================= */
+
+.company-field-row {
+    display: grid;
+    grid-template-columns: 230px 1fr auto;
+    align-items: center;
+    min-height: 68px;
+    padding: 0 22px;
+    border-bottom: 1px solid #eef0f3;
+    gap: 20px;
+}
+
+.company-field-row:last-child {
+    border-bottom: none;
+}
+
+
+/* =========================================================
+   LABEL
+========================================================= */
+
+.company-field-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+
+/* =========================================================
+   VALUE
+========================================================= */
+
+.company-field-content {
+    min-width: 0;
+}
+
+.company-field-value {
+    display: block;
+    font-size: 15px;
+    color: #111827;
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   READ ONLY
+========================================================= */
+
+.read-only-text {
+    font-size: 12px;
+    color: #9ca3af;
+    background: #f3f4f6;
+    padding: 5px 9px;
+    border-radius: 6px;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.company-field-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 130px;
+}
+
+
+/* =========================================================
+   EDIT BUTTON
+========================================================= */
+
+.company-edit-btn {
+    border: 1px solid #2563eb;
+    background: #ffffff;
+    color: #2563eb;
+    border-radius: 7px;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.company-edit-btn:hover {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   DELETE BUTTON
+========================================================= */
+
+.company-delete-btn {
+    border: 1px solid #dc2626;
+    background: #ffffff;
+    color: #dc2626;
+    border-radius: 7px;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.company-delete-btn:hover {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   SAVE BUTTON
+========================================================= */
+
+.company-save-btn {
+    border: none;
+    background: #16a34a;
+    color: #ffffff;
+    border-radius: 7px;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.company-save-btn:hover {
+    background: #15803d;
+}
+
+
+/* =========================================================
+   CANCEL BUTTON
+========================================================= */
+
+.company-cancel-btn {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #4b5563;
+    border-radius: 7px;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.company-cancel-btn:hover {
+    background: #f3f4f6;
+}
+
+
+/* =========================================================
+   EDIT INPUT
+========================================================= */
+
+.company-edit-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 9px 11px;
+    font-size: 14px;
+    color: #111827;
+    outline: none;
+    background: #ffffff;
+}
+
+.company-edit-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+
+/* =========================================================
+   NO DYNAMIC FIELDS
+========================================================= */
+
+.no-company-fields {
+    padding: 30px 22px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   DYNAMIC FIELD
+========================================================= */
+
+.dynamic-company-field {
+    background: #ffffff;
+}
+
+.dynamic-company-field:hover {
+    background: #fafcff;
+}
+
+
+/* =========================================================
+   STAFF CARD
+========================================================= */
+
+.staff-company-card {
+    max-width: 900px;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.company-error-message {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding: 12px 15px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 14px;
+}
+
+.company-error-message button {
+    border: none;
+    background: transparent;
+    color: #b91c1c;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   SUCCESS
+========================================================= */
+
+.company-success-message {
+    margin-bottom: 18px;
+    padding: 12px 15px;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: #15803d;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.company-loading {
+    padding: 50px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 15px;
+}
+
+
+/* =========================================================
+   ERROR PAGE
+========================================================= */
+
+.company-error {
+    padding: 25px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.company-retry-btn {
+    border: none;
+    border-radius: 7px;
+    padding: 9px 16px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   MODAL OVERLAY
+========================================================= */
+
+.company-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(15, 23, 42, 0.45);
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.company-modal {
+    width: 100%;
+    max-width: 500px;
+
+    background: #ffffff;
+    border-radius: 12px;
+
+    box-shadow:
+            0 20px 50px rgba(15, 23, 42, 0.20);
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   MODAL HEADER
+========================================================= */
+
+.company-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 18px 22px;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.company-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #111827;
+}
+
+.company-modal-close {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.company-modal-close:hover {
+    color: #111827;
+}
+
+
+/* =========================================================
+   MODAL BODY
+========================================================= */
+
+.company-modal-body {
+    padding: 22px;
+}
+
+
+/* =========================================================
+   FORM GROUP
+========================================================= */
+
+.company-form-group {
+    margin-bottom: 18px;
+}
+
+.company-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.company-form-group label {
+    display: block;
+    margin-bottom: 7px;
+
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.company-form-group label span {
+    margin-left: 3px;
+    color: #dc2626;
+}
+
+.company-form-group input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+
+    font-size: 14px;
+    color: #111827;
+
+    outline: none;
+}
+
+.company-form-group input:focus {
+    border-color: #2563eb;
+
+    box-shadow:
+            0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+.company-form-group input::placeholder {
+    color: #9ca3af;
+}
+
+
+/* =========================================================
+   MODAL FOOTER
+========================================================= */
+
+.company-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    padding: 16px 22px;
+
+    border-top: 1px solid #e5e7eb;
+
+    background: #fafbfc;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 800px) {
+
+    .company-page {
+        padding: 20px 16px;
+    }
+
+    .company-header {
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .company-field-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 16px 18px;
+    }
+
+    .company-field-actions {
+        justify-content: flex-start;
+        min-width: auto;
+    }
+
+    .company-edit-input {
+        width: 100%;
+    }
+}
+
+
+@media (max-width: 500px) {
+
+    .company-header {
+        flex-direction: column;
+    }
+
+    .company-add-btn {
+        width: 100%;
+    }
+
+    .company-modal {
+        max-width: 100%;
+    }
+}
