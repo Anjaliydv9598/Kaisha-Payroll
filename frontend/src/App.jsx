@@ -10,7 +10,10 @@ import {
     useState
 } from "react";
 
-import Login from "./pages/Login";
+import LoginSelection from "./pages/LoginSelection";
+import AdminLogin from "./pages/AdminLogin";
+import StaffLogin from "./pages/StaffLogin";
+
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 
@@ -27,6 +30,7 @@ import Salary from "./pages/Salary";
 
 import "./App.css";
 
+
 // ======================================================
 // ROOT
 // ======================================================
@@ -36,6 +40,7 @@ function Root() {
     const [status, setStatus] =
         useState("checking");
 
+
     useEffect(() => {
 
         fetch(
@@ -44,6 +49,7 @@ function Root() {
             .then(response => {
 
                 if (!response.ok) {
+
                     throw new Error(
                         "Registration status API failed"
                     );
@@ -56,8 +62,11 @@ function Root() {
                 if (
                     data.registrationAvailable === true
                 ) {
+
                     setStatus("register");
+
                 } else {
+
                     setStatus("login");
                 }
 
@@ -73,6 +82,7 @@ function Root() {
             });
 
     }, []);
+
 
     if (status === "checking") {
 
@@ -93,11 +103,22 @@ function Root() {
         );
     }
 
+
+    /*
+     * First-time application:
+     * Show registration page.
+     */
     if (status === "register") {
+
         return <Register />;
     }
 
-    return <Login />;
+
+    /*
+     * Company already registered:
+     * Show login selection.
+     */
+    return <LoginSelection />;
 }
 
 
@@ -110,6 +131,7 @@ function RegisterGuard() {
     const [status, setStatus] =
         useState("checking");
 
+
     useEffect(() => {
 
         fetch(
@@ -118,6 +140,7 @@ function RegisterGuard() {
             .then(response => {
 
                 if (!response.ok) {
+
                     throw new Error(
                         "Registration status API failed"
                     );
@@ -130,8 +153,11 @@ function RegisterGuard() {
                 if (
                     data.registrationAvailable === true
                 ) {
+
                     setStatus("register");
+
                 } else {
+
                     setStatus("login");
                 }
 
@@ -147,6 +173,7 @@ function RegisterGuard() {
             });
 
     }, []);
+
 
     if (status === "checking") {
 
@@ -167,6 +194,7 @@ function RegisterGuard() {
         );
     }
 
+
     if (status === "login") {
 
         return (
@@ -176,6 +204,7 @@ function RegisterGuard() {
             />
         );
     }
+
 
     return <Register />;
 }
@@ -203,12 +232,32 @@ function App() {
 
 
                 {/* =================================================
-                    LOGIN
+                    LOGIN SELECTION
                 ================================================= */}
 
                 <Route
                     path="/login"
-                    element={<Login />}
+                    element={<LoginSelection />}
+                />
+
+
+                {/* =================================================
+                    ADMIN LOGIN
+                ================================================= */}
+
+                <Route
+                    path="/admin-login"
+                    element={<AdminLogin />}
+                />
+
+
+                {/* =================================================
+                    STAFF LOGIN
+                ================================================= */}
+
+                <Route
+                    path="/staff-login"
+                    element={<StaffLogin />}
                 />
 
 
@@ -285,7 +334,6 @@ function App() {
 
                 {/* =================================================
                     ADMIN DEPARTMENT
-                    REAL Department.jsx
                 ================================================= */}
 
                 <Route
@@ -302,7 +350,6 @@ function App() {
 
                 {/* =================================================
                     ADMIN SALARY
-                    REAL Salary.jsx
                 ================================================= */}
 
                 <Route
@@ -424,5 +471,6 @@ function App() {
         </BrowserRouter>
     );
 }
+
 
 export default App;

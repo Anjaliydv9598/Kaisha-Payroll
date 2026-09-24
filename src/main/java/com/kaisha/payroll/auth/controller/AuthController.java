@@ -3,6 +3,7 @@ package com.kaisha.payroll.auth.controller;
 import com.kaisha.payroll.auth.dto.LoginRequest;
 import com.kaisha.payroll.auth.dto.LoginResponse;
 import com.kaisha.payroll.auth.dto.RegisterRequest;
+import com.kaisha.payroll.auth.entity.Role;
 import com.kaisha.payroll.auth.entity.User;
 import com.kaisha.payroll.auth.service.EmailService;
 import com.kaisha.payroll.auth.service.JwtService;
@@ -11,9 +12,7 @@ import com.kaisha.payroll.auth.service.UserService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -44,21 +43,17 @@ public class AuthController {
         this.otpService = otpService;
     }
 
-
-    // =========================================
+    // =========================================================
     // REGISTER
-    // =========================================
+    // =========================================================
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(
-            @RequestBody RegisterRequest request
-    ) {
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
 
         try {
 
             User user = userService.registerUser(request);
 
-            // Send registration email
             emailService.sendRegistrationEmail(
                     user,
                     request.getCompanyId(),
@@ -90,8 +85,7 @@ public class AuthController {
 
             ex.printStackTrace();
 
-            Map<String, String> response =
-                    new HashMap<>();
+            Map<String, String> response = new HashMap<>();
 
             response.put(
                     "message",
@@ -103,9 +97,46 @@ public class AuthController {
                     .body(response);
         }
     }
-    // =========================================
-    // LOGIN
-    // =========================================
+
+
+    // =========================================================
+    // ADMIN LOGIN
+    // =========================================================
+
+    @PostMapping("/admin-login")
+    public ResponseEntity<?> adminLogin(
+            @RequestBody LoginRequest request
+    ) {
+
+        return loginWithRequiredRole(
+                request,
+                Role.ADMIN
+        );
+    }
+
+
+    // =========================================================
+    // STAFF LOGIN
+    // =========================================================
+
+    @PostMapping("/staff-login")
+    public ResponseEntity<?> staffLogin(
+            @RequestBody LoginRequest request
+    ) {
+
+        return loginWithRequiredRole(
+                request,
+                Role.STAFF
+        );
+    }
+
+
+    // =========================================================
+    // COMMON LOGIN
+    //
+    // Kept for backward compatibility with your existing frontend.
+    // Later the frontend will use /admin-login and /staff-login.
+    // =========================================================
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
@@ -114,56 +145,11 @@ public class AuthController {
 
         try {
 
-            User user =
-                    userService.findByIdentifier(
-                            request.getIdentifier()
-                    );
-
-
-            if (!user.isActive()) {
-
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(
-                                Map.of(
-                                        "message",
-                                        "Your account is inactive."
-                                )
-                        );
-            }
-
-
-            if (!passwordEncoder.matches(
-                    request.getPassword(),
-                    user.getPassword()
-            )) {
-
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(
-                                Map.of(
-                                        "message",
-                                        "Invalid email or password."
-                                )
-                        );
-            }
-
-
-            String token =
-                    jwtService.generateToken(
-                            user.getUsername(),
-                            user.getRole().name()
-                    );
-
-
-            return ResponseEntity.ok(
-                    new LoginResponse(
-                            user.getUsername(),
-                            user.getRole().name(),
-                            token
-                    )
+            User user = userService.findByIdentifier(
+                    request.getIdentifier()
             );
 
+            return authenticateUser(user, request);
 
         } catch (RuntimeException ex) {
 
@@ -179,9 +165,171 @@ public class AuthController {
     }
 
 
-    // =========================================
-    // SEND OTP
-    // =========================================
+    // =========================================================
+    // ROLE-SPECIFIC LOGIN
+    // =========================================================
+
+    private ResponseEntity<?> loginWithRequiredRole(
+            LoginRequest request,
+            Role requiredRole
+    ) {
+
+        try {
+
+            if (request == null ||
+                    request.getIdentifier() == null ||
+                    request.getIdentifier().trim().isEmpty()) {
+
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(
+                                Map.of(
+                                        "message",
+                                        "Email is required."
+                                )
+                        );
+            }
+
+            if (request.getPassword() == null ||
+                    request.getPassword().isEmpty()) {
+
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(
+                                Map.of(
+                                        "message",
+                                        "Password is required."
+                                )
+                        );
+            }
+
+            User user = userService.findByIdentifier(
+                    request.getIdentifier().trim()
+            );
+
+            // -------------------------------------------------
+            // IMPORTANT:
+            // Admin login cannot be used by STAFF.
+            // Staff login cannot be used by ADMIN.
+            // -------------------------------------------------
+
+            if (user.getRole() != requiredRole) {
+
+                String message;
+
+                if (requiredRole == Role.ADMIN) {
+
+                    message =
+                            "This account is not registered as an ADMIN account.";
+
+                } else {
+
+                    message =
+                            "This account is not registered as a STAFF account.";
+                }
+
+                return ResponseEntity
+                        .status(HttpStatus.FORBIDDEN)
+                        .body(
+                                Map.of(
+                                        "message",
+                                        message
+                                )
+                        );
+            }
+
+            return authenticateUser(
+                    user,
+                    request
+            );
+
+        } catch (RuntimeException ex) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "Invalid email or password."
+                            )
+                    );
+        }
+    }
+
+
+    // =========================================================
+    // COMMON AUTHENTICATION
+    // =========================================================
+
+    private ResponseEntity<?> authenticateUser(
+            User user,
+            LoginRequest request
+    ) {
+
+        // -----------------------------------------------------
+        // Check account active/inactive
+        // -----------------------------------------------------
+
+        if (!user.isActive()) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "Your account is inactive."
+                            )
+                    );
+        }
+
+
+        // -----------------------------------------------------
+        // Check password
+        // -----------------------------------------------------
+
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        )) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "Invalid email or password."
+                            )
+                    );
+        }
+
+
+        // -----------------------------------------------------
+        // Generate JWT
+        // -----------------------------------------------------
+
+        String token = jwtService.generateToken(
+                user.getUsername(),
+                user.getRole().name()
+        );
+
+
+        // -----------------------------------------------------
+        // Login response
+        // -----------------------------------------------------
+
+        return ResponseEntity.ok(
+                new LoginResponse(
+                        user.getUsername(),
+                        user.getRole().name(),
+                        token
+                )
+        );
+    }
+
+
+    // =========================================================
+    // FORGOT PASSWORD - SEND OTP
+    // =========================================================
 
     @PostMapping("/forgot-password/send-otp")
     public ResponseEntity<?> sendOtp(
@@ -216,9 +364,9 @@ public class AuthController {
     }
 
 
-    // =========================================
-    // VERIFY OTP
-    // =========================================
+    // =========================================================
+    // FORGOT PASSWORD - VERIFY OTP
+    // =========================================================
 
     @PostMapping("/forgot-password/verify-otp")
     public ResponseEntity<?> verifyOtp(
@@ -262,9 +410,9 @@ public class AuthController {
     }
 
 
-    // =========================================
-    // RESET PASSWORD
-    // =========================================
+    // =========================================================
+    // FORGOT PASSWORD - RESET
+    // =========================================================
 
     @PostMapping("/forgot-password/reset")
     public ResponseEntity<?> resetPassword(
