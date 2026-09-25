@@ -1,17 +1,17 @@
 package com.kaisha.payroll.employee.service;
 
+import com.kaisha.payroll.auth.service.CurrentUserService;
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.company.repository.CompanyRepository;
 import com.kaisha.payroll.employee.entity.Employee;
 import com.kaisha.payroll.employee.entity.EmployeeField;
+import com.kaisha.payroll.employee.numberseries.service.EmployeeNumberSeriesService;
 import com.kaisha.payroll.employee.repository.EmployeeFieldRepository;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
-import com.kaisha.payroll.auth.entity.User;
-import com.kaisha.payroll.auth.service.CurrentUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,30 +19,49 @@ import java.util.regex.Pattern;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+
     private final EmployeeFieldRepository employeeFieldRepository;
+
     private final CompanyRepository companyRepository;
+
     private final CurrentUserService currentUserService;
+
+    private final EmployeeNumberSeriesService numberSeriesService;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
             EmployeeFieldRepository employeeFieldRepository,
             CompanyRepository companyRepository,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            EmployeeNumberSeriesService numberSeriesService
     ) {
-        this.employeeRepository = employeeRepository;
-        this.employeeFieldRepository = employeeFieldRepository;
-        this.companyRepository = companyRepository;
-        this.currentUserService = currentUserService;
+
+        this.employeeRepository =
+                employeeRepository;
+
+        this.employeeFieldRepository =
+                employeeFieldRepository;
+
+        this.companyRepository =
+                companyRepository;
+
+        this.currentUserService =
+                currentUserService;
+
+        this.numberSeriesService =
+                numberSeriesService;
     }
 
     // ============================================================
     // GET ALL ACTIVE EMPLOYEES
+    // ADMIN + STAFF
     // ============================================================
 
     @Transactional(readOnly = true)
     public List<Employee> getEmployees() {
 
-        String companyId = currentUserService.getCurrentCompanyId();
+        String companyId =
+                currentUserService.getCurrentCompanyId();
 
         return employeeRepository
                 .findByCompany_CompanyIdAndActiveTrueOrderByEmployeeIdAsc(
@@ -53,11 +72,38 @@ public class EmployeeService {
     // ============================================================
     // CREATE EMPLOYEE
     // ADMIN ONLY
-    // EMPLOYEE ID IS AUTO GENERATED
+    //
+    // Department is required because the employee ID is generated
+    // from the department's configured Number Series.
+    //
+    // Example:
+    //
+    // HR     -> HR001
+    // Finance -> FIN001
+    // CO     -> CO001
+    // PP     -> PP001
     // ============================================================
 
     @Transactional
-    public Employee createEmployee() {
+    public Employee createEmployee(
+            String department
+    ) {
+
+        if (
+                department == null
+                        ||
+                        department.trim().isEmpty()
+        ) {
+
+            throw new RuntimeException(
+                    "Department is required to create an employee"
+            );
+        }
+
+        String cleanDepartment =
+                department
+                        .trim()
+                        .toUpperCase();
 
         String companyId =
                 currentUserService.getCurrentCompanyId();
@@ -71,100 +117,62 @@ public class EmployeeService {
                                 )
                         );
 
+        /*
+         * Number Series Service generates the employee ID
+         * according to the configured department series.
+         */
         String employeeId =
-                generateNextEmployeeId(companyId);
-
-        Employee employee = new Employee();
-
-        employee.setEmployeeId(employeeId);
-        employee.setCompany(company);
-        employee.setActive(true);
-
-        return employeeRepository.save(employee);
-    }
-
-    // ============================================================
-    // AUTO GENERATE EMPLOYEE ID
-    //
-    // E001
-    // E002
-    // E003
-    //
-    // Prefix is E by default.
-    // Numeric portion is controlled by system.
-    // ============================================================
-
-    private String generateNextEmployeeId(String companyId) {
-
-        List<Employee> employees =
-                employeeRepository
-                        .findByCompany_CompanyIdOrderByEmployeeIdAsc(
-                                companyId
+                numberSeriesService
+                        .generateNextEmployeeId(
+                                cleanDepartment
                         );
 
-        int highestNumber = 0;
+        Employee employee =
+                new Employee();
 
-        Pattern pattern =
-                Pattern.compile("^[A-Z]+(\\d+)$");
+        employee.setEmployeeId(
+                employeeId
+        );
 
-        for (Employee employee : employees) {
+        employee.setCompany(
+                company
+        );
 
-            String id = employee.getEmployeeId();
+        employee.setActive(
+                true
+        );
 
-            if (id == null || id.isBlank()) {
-                continue;
-            }
+        /*
+         * Store department as an EmployeeField.
+         *
+         * Your current application already stores employee
+         * details through EmployeeField.
+         */
+        EmployeeField departmentField =
+                new EmployeeField();
 
-            Matcher matcher = pattern.matcher(id);
+        departmentField.setEmployee(
+                employee
+        );
 
-            if (!matcher.matches()) {
-                continue;
-            }
+        departmentField.setFieldName(
+                "Department"
+        );
 
-            try {
+        departmentField.setFieldValue(
+                cleanDepartment
+        );
 
-                int number =
-                        Integer.parseInt(
-                                matcher.group(1)
-                        );
-
-                highestNumber =
-                        Math.max(
-                                highestNumber,
-                                number
-                        );
-
-            } catch (NumberFormatException ignored) {
-                // Ignore invalid numeric suffix
-            }
-        }
-
-        int nextNumber = highestNumber + 1;
-
-        String employeeId =
-                String.format(
-                        "E%03d",
-                        nextNumber
+        Employee savedEmployee =
+                employeeRepository.save(
+                        employee
                 );
 
-        while (
-                employeeRepository
-                        .existsByEmployeeIdAndCompany_CompanyId(
-                                employeeId,
-                                companyId
-                        )
-        ) {
+        employeeFieldRepository.save(
+                departmentField
+        );
 
-            nextNumber++;
-
-            employeeId =
-                    String.format(
-                            "E%03d",
-                            nextNumber
-                    );
-        }
-
-        return employeeId;
+        return savedEmployee;
     }
 
     // ============================================================
@@ -201,7 +209,9 @@ public class EmployeeService {
     ) {
 
         Employee employee =
-                getEmployeeForCompany(employeeId);
+                getEmployeeForCompany(
+                        employeeId
+                );
 
         return employeeFieldRepository
                 .findByEmployee_IdOrderByFieldIdAsc(
@@ -221,7 +231,9 @@ public class EmployeeService {
     ) {
 
         Employee employee =
-                getEmployeeForCompany(employeeId);
+                getEmployeeForCompany(
+                        employeeId
+                );
 
         validateField(
                 employee,
@@ -231,13 +243,21 @@ public class EmployeeService {
         EmployeeField field =
                 new EmployeeField();
 
-        field.setEmployee(employee);
+        field.setEmployee(
+                employee
+        );
+
         field.setFieldName(
                 fieldName.trim()
         );
-        field.setFieldValue(fieldValue);
 
-        return employeeFieldRepository.save(field);
+        field.setFieldValue(
+                fieldValue
+        );
+
+        return employeeFieldRepository.save(
+                field
+        );
     }
 
     // ============================================================
@@ -253,7 +273,9 @@ public class EmployeeService {
     ) {
 
         Employee employee =
-                getEmployeeForCompany(employeeId);
+                getEmployeeForCompany(
+                        employeeId
+                );
 
         EmployeeField field =
                 employeeFieldRepository
@@ -294,7 +316,9 @@ public class EmployeeService {
                 fieldValue
         );
 
-        return employeeFieldRepository.save(field);
+        return employeeFieldRepository.save(
+                field
+        );
     }
 
     // ============================================================
@@ -308,7 +332,9 @@ public class EmployeeService {
     ) {
 
         Employee employee =
-                getEmployeeForCompany(employeeId);
+                getEmployeeForCompany(
+                        employeeId
+                );
 
         EmployeeField field =
                 employeeFieldRepository
@@ -322,7 +348,9 @@ public class EmployeeService {
                                 )
                         );
 
-        employeeFieldRepository.delete(field);
+        employeeFieldRepository.delete(
+                field
+        );
     }
 
     // ============================================================
@@ -344,13 +372,21 @@ public class EmployeeService {
         EmployeeField field =
                 new EmployeeField();
 
-        field.setEmployee(employee);
+        field.setEmployee(
+                employee
+        );
+
         field.setFieldName(
                 fieldName.trim()
         );
-        field.setFieldValue(fieldValue);
 
-        return employeeFieldRepository.save(field);
+        field.setFieldValue(
+                fieldValue
+        );
+
+        return employeeFieldRepository.save(
+                field
+        );
     }
 
     // ============================================================
@@ -377,7 +413,9 @@ public class EmployeeService {
                                 )
                         );
 
-        validateFieldName(fieldName);
+        validateFieldName(
+                fieldName
+        );
 
         boolean duplicate =
                 employeeFieldRepository
@@ -402,7 +440,9 @@ public class EmployeeService {
                 fieldValue
         );
 
-        return employeeFieldRepository.save(field);
+        return employeeFieldRepository.save(
+                field
+        );
     }
 
     // ============================================================
@@ -427,16 +467,19 @@ public class EmployeeService {
                                 )
                         );
 
-        employeeFieldRepository.delete(field);
+        employeeFieldRepository.delete(
+                field
+        );
     }
 
     // ============================================================
     // CHANGE EMPLOYEE ID PREFIX
     //
-    // E001 -> T001
+    // Example:
     //
-    // Only prefix changes.
-    // Numeric suffix stays unchanged.
+    // HR001 -> STAFF001
+    //
+    // Numeric suffix remains unchanged.
     // ============================================================
 
     @Transactional
@@ -446,7 +489,9 @@ public class EmployeeService {
     ) {
 
         Employee employee =
-                getEmployeeForCompany(employeeId);
+                getEmployeeForCompany(
+                        employeeId
+                );
 
         return updateEmployeePrefixForApproval(
                 employee,
@@ -454,13 +499,19 @@ public class EmployeeService {
         );
     }
 
+    // ============================================================
+    // CHANGE PREFIX FOR APPROVAL
+    // ============================================================
+
     @Transactional
     public Employee updateEmployeePrefixForApproval(
             Employee employee,
             String newPrefix
     ) {
 
-        validatePrefix(newPrefix);
+        validatePrefix(
+                newPrefix
+        );
 
         String prefix =
                 newPrefix
@@ -476,7 +527,8 @@ public class EmployeeService {
                 );
 
         String newEmployeeId =
-                prefix + numericPart;
+                prefix +
+                        numericPart;
 
         String companyId =
                 employee
@@ -506,11 +558,13 @@ public class EmployeeService {
                 newEmployeeId
         );
 
-        return employeeRepository.save(employee);
+        return employeeRepository.save(
+                employee
+        );
     }
 
     // ============================================================
-    // VALIDATION
+    // VALIDATE EMPLOYEE FIELD
     // ============================================================
 
     private void validateField(
@@ -518,7 +572,9 @@ public class EmployeeService {
             String fieldName
     ) {
 
-        validateFieldName(fieldName);
+        validateFieldName(
+                fieldName
+        );
 
         boolean exists =
                 employeeFieldRepository
@@ -534,6 +590,10 @@ public class EmployeeService {
             );
         }
     }
+
+    // ============================================================
+    // VALIDATE FIELD NAME
+    // ============================================================
 
     private void validateFieldName(
             String fieldName
@@ -559,6 +619,10 @@ public class EmployeeService {
             );
         }
     }
+
+    // ============================================================
+    // VALIDATE PREFIX
+    // ============================================================
 
     private void validatePrefix(
             String prefix
@@ -587,6 +651,13 @@ public class EmployeeService {
         }
     }
 
+    // ============================================================
+    // EXTRACT NUMERIC PART
+    //
+    // HR001 -> 001
+    // FIN025 -> 025
+    // ============================================================
+
     private String extractNumericPart(
             String employeeId
     ) {
@@ -605,7 +676,9 @@ public class EmployeeService {
         Matcher matcher =
                 Pattern
                         .compile("^(.*?)(\\d+)$")
-                        .matcher(employeeId);
+                        .matcher(
+                                employeeId
+                        );
 
         if (!matcher.matches()) {
 

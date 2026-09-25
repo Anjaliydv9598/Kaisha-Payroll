@@ -32,7 +32,7 @@ import Report from "./pages/Report";
 import StaffIdPassword from "./pages/StaffIdPassword";
 import Calendar from "./pages/Calendar";
 import Downloads from "./pages/Downloads";
-
+import MasterDataNoSeries from "./pages/MasterDataNoSeries";
 import "./App.css";
 
 
@@ -328,10 +328,7 @@ function App() {
                         <ProtectedRoute
                             requiredRole="ADMIN"
                         >
-                            <AdminModulePage
-                                title="Master Data No. Series"
-                                description="Manage employee and document number series."
-                            />
+                            <MasterDataNoSeries />
                         </ProtectedRoute>
                     }
                 />
