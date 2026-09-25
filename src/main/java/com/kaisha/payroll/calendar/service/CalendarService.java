@@ -21,8 +21,7 @@ public class CalendarService {
     public CalendarService(
             CalendarEventRepository calendarEventRepository
     ) {
-        this.calendarEventRepository =
-                calendarEventRepository;
+        this.calendarEventRepository = calendarEventRepository;
     }
 
     // =====================================================
@@ -30,19 +29,14 @@ public class CalendarService {
     // =====================================================
 
     @Transactional(readOnly = true)
-    public List<CalendarEventResponse> getAllEvents(
-            User user
-    ) {
+    public List<CalendarEventResponse> getAllEvents(User user) {
 
         Company company = getCompany(user);
 
-        String companyId =
-                getCompanyId(company);
+        String companyId = getCompanyId(company);
 
         return calendarEventRepository
-                .findByCompany_CompanyIdOrderByEventDateAsc(
-                        companyId
-                )
+                .findByCompany_CompanyIdOrderByEventDateAsc(companyId)
                 .stream()
                 .map(CalendarEventResponse::new)
                 .toList();
@@ -59,7 +53,6 @@ public class CalendarService {
     ) {
 
         if (year < 1900 || year > 2500) {
-
             throw new RuntimeException(
                     "Invalid calendar year."
             );
@@ -67,22 +60,19 @@ public class CalendarService {
 
         Company company = getCompany(user);
 
-        String companyId =
-                getCompanyId(company);
+        String companyId = getCompanyId(company);
 
-        LocalDate startDate =
-                LocalDate.of(
-                        year,
-                        1,
-                        1
-                );
+        LocalDate startDate = LocalDate.of(
+                year,
+                1,
+                1
+        );
 
-        LocalDate endDate =
-                LocalDate.of(
-                        year,
-                        12,
-                        31
-                );
+        LocalDate endDate = LocalDate.of(
+                year,
+                12,
+                31
+        );
 
         return calendarEventRepository
                 .findByCompany_CompanyIdAndEventDateBetweenOrderByEventDateAsc(
@@ -106,7 +96,6 @@ public class CalendarService {
     ) {
 
         if (eventId == null) {
-
             throw new RuntimeException(
                     "Calendar event ID is required."
             );
@@ -114,8 +103,7 @@ public class CalendarService {
 
         Company company = getCompany(user);
 
-        String companyId =
-                getCompanyId(company);
+        String companyId = getCompanyId(company);
 
         CalendarEvent event =
                 calendarEventRepository
@@ -134,7 +122,6 @@ public class CalendarService {
 
     // =====================================================
     // CREATE EVENT
-    // ADMIN ONLY
     // =====================================================
 
     @Transactional
@@ -147,16 +134,10 @@ public class CalendarService {
 
         validateRequest(request);
 
-        Company company =
-                getCompany(user);
+        Company company = getCompany(user);
 
-        CalendarEvent event =
-                new CalendarEvent();
+        CalendarEvent event = new CalendarEvent();
 
-        /*
-         * Connect the event to the existing
-         * Company entity.
-         */
         event.setCompany(company);
 
         event.setEventDate(
@@ -177,15 +158,14 @@ public class CalendarService {
                 )
         );
 
-        event =
+        CalendarEvent savedEvent =
                 calendarEventRepository.save(event);
 
-        return new CalendarEventResponse(event);
+        return new CalendarEventResponse(savedEvent);
     }
 
     // =====================================================
     // UPDATE EVENT
-    // ADMIN ONLY
     // =====================================================
 
     @Transactional
@@ -200,17 +180,14 @@ public class CalendarService {
         validateRequest(request);
 
         if (eventId == null) {
-
             throw new RuntimeException(
                     "Calendar event ID is required."
             );
         }
 
-        Company company =
-                getCompany(user);
+        Company company = getCompany(user);
 
-        String companyId =
-                getCompanyId(company);
+        String companyId = getCompanyId(company);
 
         CalendarEvent event =
                 calendarEventRepository
@@ -242,15 +219,14 @@ public class CalendarService {
                 )
         );
 
-        event =
+        CalendarEvent updatedEvent =
                 calendarEventRepository.save(event);
 
-        return new CalendarEventResponse(event);
+        return new CalendarEventResponse(updatedEvent);
     }
 
     // =====================================================
     // DELETE EVENT
-    // ADMIN ONLY
     // =====================================================
 
     @Transactional
@@ -262,17 +238,14 @@ public class CalendarService {
         validateAdmin(user);
 
         if (eventId == null) {
-
             throw new RuntimeException(
                     "Calendar event ID is required."
             );
         }
 
-        Company company =
-                getCompany(user);
+        Company company = getCompany(user);
 
-        String companyId =
-                getCompanyId(company);
+        String companyId = getCompanyId(company);
 
         CalendarEvent event =
                 calendarEventRepository
@@ -296,7 +269,6 @@ public class CalendarService {
     private void validateAdmin(User user) {
 
         if (user == null) {
-
             throw new RuntimeException(
                     "User not found."
             );
@@ -313,7 +285,6 @@ public class CalendarService {
         }
 
         if (!user.isActive()) {
-
             throw new RuntimeException(
                     "User account is inactive."
             );
@@ -327,14 +298,12 @@ public class CalendarService {
     private Company getCompany(User user) {
 
         if (user == null) {
-
             throw new RuntimeException(
                     "User not found."
             );
         }
 
         if (user.getCompany() == null) {
-
             throw new RuntimeException(
                     "No company is assigned to this user."
             );
@@ -347,12 +316,9 @@ public class CalendarService {
     // GET COMPANY ID
     // =====================================================
 
-    private String getCompanyId(
-            Company company
-    ) {
+    private String getCompanyId(Company company) {
 
         if (company == null) {
-
             throw new RuntimeException(
                     "Company not found."
             );
@@ -381,14 +347,12 @@ public class CalendarService {
     ) {
 
         if (request == null) {
-
             throw new RuntimeException(
                     "Calendar event data is required."
             );
         }
 
         if (request.getEventDate() == null) {
-
             throw new RuntimeException(
                     "Event date is required."
             );
@@ -403,14 +367,12 @@ public class CalendarService {
         }
 
         if (request.getTitle().trim().length() > 150) {
-
             throw new RuntimeException(
                     "Event title cannot exceed 150 characters."
             );
         }
 
         if (request.getEventType() == null) {
-
             throw new RuntimeException(
                     "Event type is required."
             );
