@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Report.css";
+import AdminLayout from "../pages/AdminLayout";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -168,6 +169,7 @@ const Report = () => {
     };
 
     return (
+        <AdminLayout>
         <div className="report-page">
 
             <div className="report-header">
@@ -378,6 +380,7 @@ const Report = () => {
             </div>
 
         </div>
+        </AdminLayout>
     );
 };
 

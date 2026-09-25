@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./Company.css";
+import AdminLayout from "../pages/AdminLayout";
 
 const API_URL = "http://localhost:8080/api/company";
 
@@ -697,6 +698,7 @@ const Company = () => {
     // =========================================================
 
     return (
+        <AdminLayout>
         <div className="company-page">
 
             {/* =================================================
@@ -1200,6 +1202,7 @@ const Company = () => {
             )}
 
         </div>
+        </AdminLayout>
     );
 };
 

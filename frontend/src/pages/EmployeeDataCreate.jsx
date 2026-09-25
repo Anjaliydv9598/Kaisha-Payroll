@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./EmployeeDataCreate.css";
+import AdminLayout from "../pages/AdminLayout";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -1053,6 +1054,7 @@ export default function EmployeeDataCreate() {
     // ============================================================
 
     return (
+        <AdminLayout>
         <div className="employee-page">
 
             {/* ====================================================
@@ -2667,5 +2669,7 @@ export default function EmployeeDataCreate() {
             )}
 
         </div>
+        </AdminLayout>
+
     );
 }

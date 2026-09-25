@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./MasterDataNoSeries.css";
-
+import AdminLayout from "../pages/AdminLayout";
 const API_URL = "http://localhost:8080/api/employee-number-series";
 
 function MasterDataNoSeries() {
@@ -752,6 +752,7 @@ function MasterDataNoSeries() {
     // =====================================================
 
     return (
+        <AdminLayout>
 
         <div className="master-series-page">
 
@@ -1395,7 +1396,7 @@ function MasterDataNoSeries() {
                 )}
 
         </div>
-
+        </AdminLayout>
     );
 
 }

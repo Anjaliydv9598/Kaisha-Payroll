@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./Department.css";
+import AdminLayout from "../pages/AdminLayout";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -1072,6 +1073,7 @@ function Department() {
     // =========================================================
 
     return (
+        <AdminLayout>
         <div className="department-page">
 
             {/* ================================================= */}
@@ -1973,6 +1975,7 @@ function Department() {
             )}
 
         </div>
+        </AdminLayout>
     );
 }
 
