@@ -353,7 +353,8 @@
 /* CONTENT */
 
 .module-content {
-    padding-right: 20px;
+    padding-right: 24px;
+    min-width: 0;
 }
 
 .module-content h3 {
@@ -364,6 +365,8 @@
     font-size: 15px;
 
     line-height: 1.35;
+
+    word-break: normal;
 }
 
 .module-content p {
