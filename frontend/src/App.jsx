@@ -33,6 +33,8 @@ import StaffIdPassword from "./pages/StaffIdPassword";
 import Calendar from "./pages/Calendar";
 import Downloads from "./pages/Downloads";
 import MasterDataNoSeries from "./pages/MasterDataNoSeries";
+import Attendance from "./pages/Attendance";
+
 import "./App.css";
 
 
@@ -407,10 +409,7 @@ function App() {
                         <ProtectedRoute
                             requiredRole="ADMIN"
                         >
-                            <AdminModulePage
-                                title="Attendance"
-                                description="Manage employee attendance and punch records."
-                            />
+                            <Attendance />
                         </ProtectedRoute>
                     }
                 />

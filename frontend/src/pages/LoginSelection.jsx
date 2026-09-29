@@ -13,14 +13,14 @@ function LoginSelection() {
                 {/* LOGO */}
 
                 <div className="selection-brand-mark">
-                    K
+                    SP
                 </div>
 
 
                 {/* TITLE */}
 
                 <h1 className="selection-title">
-                    KAISHA <span>PAYROLL</span>
+                    SMART <span>PAYROLL</span>
                 </h1>
 
                 <div className="selection-title-line"></div>
