@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import AdminLayout from "../pages/AdminLayout";
 import SalaryDownload
     from "../components/salary/SalaryDownload";
 
@@ -695,6 +695,7 @@ function Salary() {
     // =====================================================
 
     return (
+        <AdminLayout>
 
         <div className="salary-page">
 
@@ -1237,6 +1238,7 @@ function Salary() {
             )}
 
         </div>
+        </AdminLayout>
 
     );
 }

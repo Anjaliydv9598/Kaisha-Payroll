@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./StaffIdPassword.css";
-
+import AdminLayout from "../pages/AdminLayout";
 const API_BASE_URL = "http://localhost:8080/api";
 
 const getToken = () => localStorage.getItem("token");
@@ -151,6 +151,7 @@ const StaffIdPassword = () => {
     };
 
     return (
+        <AdminLayout>
         <div className="staff-page">
 
             <div className="staff-header">
@@ -433,6 +434,7 @@ const StaffIdPassword = () => {
             )}
 
         </div>
+        </AdminLayout>
     );
 };
 

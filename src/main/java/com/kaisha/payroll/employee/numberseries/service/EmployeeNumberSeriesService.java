@@ -3,593 +3,235 @@ package com.kaisha.payroll.employee.numberseries.service;
 import com.kaisha.payroll.auth.service.CurrentUserService;
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.company.repository.CompanyRepository;
+import com.kaisha.payroll.employee.entity.Employee;
+import com.kaisha.payroll.employee.entity.EmployeeField;
 import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesRequest;
 import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesResponse;
 import com.kaisha.payroll.employee.numberseries.entity.EmployeeNumberSeries;
 import com.kaisha.payroll.employee.numberseries.repository.EmployeeNumberSeriesRepository;
+import com.kaisha.payroll.employee.repository.EmployeeFieldRepository;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class EmployeeNumberSeriesService {
 
     private final EmployeeNumberSeriesRepository seriesRepository;
-
     private final CompanyRepository companyRepository;
-
     private final EmployeeRepository employeeRepository;
-
+    private final EmployeeFieldRepository employeeFieldRepository;
     private final CurrentUserService currentUserService;
-
-    public EmployeeNumberSeriesService(
-            EmployeeNumberSeriesRepository seriesRepository,
-            CompanyRepository companyRepository,
-            EmployeeRepository employeeRepository,
-            CurrentUserService currentUserService
-    ) {
-
-        this.seriesRepository =
-                seriesRepository;
-
-        this.companyRepository =
-                companyRepository;
-
-        this.employeeRepository =
-                employeeRepository;
-
-        this.currentUserService =
-                currentUserService;
-    }
-
-    // ============================================================
-    // GET ALL SERIES
-    // ============================================================
 
     @Transactional(readOnly = true)
     public List<NumberSeriesResponse> getAllSeries() {
-
-        String companyId =
-                currentUserService.getCurrentCompanyId();
+        String companyId = currentUserService.getCurrentCompanyId();
 
         return seriesRepository
-                .findByCompany_CompanyIdOrderByDepartmentAsc(
-                        companyId
-                )
+                .findByCompany_CompanyIdOrderByDepartmentAsc(companyId)
                 .stream()
                 .map(NumberSeriesResponse::new)
-                .toList();
+                .collect(Collectors.toList());
     }
 
-    // ============================================================
-    // GET SINGLE SERIES
-    // ============================================================
-
     @Transactional(readOnly = true)
-    public NumberSeriesResponse getSeries(
-            Long id
-    ) {
+    public NumberSeriesResponse getSeries(Long id) {
+        String companyId = currentUserService.getCurrentCompanyId();
 
-        String companyId =
-                currentUserService.getCurrentCompanyId();
-
-        EmployeeNumberSeries series =
-                seriesRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                companyId
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Number series not found"
-                                )
-                        );
+        EmployeeNumberSeries series = seriesRepository
+                .findByIdAndCompany_CompanyId(id, companyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Number series not found"));
 
         return new NumberSeriesResponse(series);
     }
 
-    // ============================================================
-    // CREATE SERIES
-    // ============================================================
-
     @Transactional
-    public NumberSeriesResponse createSeries(
-            NumberSeriesRequest request
-    ) {
-
-        String companyId =
-                currentUserService.getCurrentCompanyId();
-
-        Company company =
-                companyRepository
-                        .findById(companyId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Company not found"
-                                )
-                        );
-
+    public NumberSeriesResponse createSeries(NumberSeriesRequest request) {
         validateRequest(request);
 
-        String department =
-                cleanUpper(request.getDepartment());
+        String companyId = currentUserService.getCurrentCompanyId();
 
-        String prefix =
-                cleanUpper(request.getPrefix());
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Company not found"));
 
-        boolean exists =
-                seriesRepository
-                        .existsByDepartmentIgnoreCaseAndCompany_CompanyId(
-                                department,
-                                companyId
-                        );
+        String department = cleanUpper(request.getDepartment());
+        String prefix = cleanUpper(request.getPrefix());
 
-        if (exists) {
-
+        if (seriesRepository
+                .existsByDepartmentIgnoreCaseAndCompany_CompanyId(
+                        department, companyId)) {
             throw new RuntimeException(
-                    "Number series already exists for department: "
-                            + department
-            );
+                    "A series already exists for department " + department);
         }
 
-        EmployeeNumberSeries series =
-                new EmployeeNumberSeries();
+        long start = request.getStartNumber();
+        long end = request.getEndNumber();
 
+        if (end - start + 1 > 10000) {
+            throw new RuntimeException(
+                    "A maximum of 10000 IDs can be reserved at one time");
+        }
+
+        // Pre-check all IDs before saving any records.
+        for (long number = start; number <= end; number++) {
+            String employeeId = buildEmployeeId(
+                    prefix, number, request.getNumberLength());
+
+            if (employeeRepository.existsByEmployeeIdAndCompany_CompanyId(
+                    employeeId, companyId)) {
+                throw new RuntimeException(
+                        "Employee ID already exists: " + employeeId);
+            }
+        }
+
+        EmployeeNumberSeries series = new EmployeeNumberSeries();
         series.setCompany(company);
+        series.setDepartment(department);
+        series.setPrefix(prefix);
+        series.setStartNumber(start);
+        series.setEndNumber(end);
+        series.setNumberLength(request.getNumberLength());
+        series.setNextNumber(end + 1);
+        series.setActive(request.getActive() == null || request.getActive());
 
-        series.setDepartment(
-                department
-        );
+        EmployeeNumberSeries savedSeries = seriesRepository.save(series);
 
-        series.setPrefix(
-                prefix
-        );
+        List<Employee> employees = new ArrayList<Employee>();
 
-        series.setStartNumber(
-                request.getStartNumber()
-        );
+        for (long number = start; number <= end; number++) {
+            Employee employee = new Employee();
+            employee.setEmployeeId(
+                    buildEmployeeId(prefix, number,
+                            request.getNumberLength()));
+            employee.setCompany(company);
+            employee.setActive(true);
+            employee.setDetailsCompleted(false);
+            employees.add(employee);
+        }
 
-        series.setEndNumber(
-                request.getEndNumber()
-        );
+        List<Employee> savedEmployees =
+                employeeRepository.saveAll(employees);
 
-        series.setNumberLength(
-                request.getNumberLength()
-        );
+        List<EmployeeField> departmentFields = new ArrayList<EmployeeField>();
 
-        series.setNextNumber(
-                request.getStartNumber()
-        );
+        for (Employee employee : savedEmployees) {
+            EmployeeField field = new EmployeeField();
+            field.setEmployee(employee);
+            field.setFieldName("Department");
+            field.setFieldValue(department);
+            departmentFields.add(field);
+        }
 
-        series.setActive(
-                request.getActive() == null
-                        ||
-                        request.getActive()
-        );
+        employeeFieldRepository.saveAll(departmentFields);
 
-        EmployeeNumberSeries saved =
-                seriesRepository.save(series);
-
-        return new NumberSeriesResponse(saved);
+        return new NumberSeriesResponse(savedSeries);
     }
-
-    // ============================================================
-    // UPDATE SERIES
-    // ============================================================
 
     @Transactional
     public NumberSeriesResponse updateSeries(
-            Long id,
-            NumberSeriesRequest request
-    ) {
-
-        String companyId =
-                currentUserService.getCurrentCompanyId();
+            Long id, NumberSeriesRequest request) {
 
         validateRequest(request);
 
-        EmployeeNumberSeries series =
-                seriesRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                companyId
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Number series not found"
-                                )
-                        );
+        String companyId = currentUserService.getCurrentCompanyId();
 
-        String department =
-                cleanUpper(request.getDepartment());
+        EmployeeNumberSeries series = seriesRepository
+                .findByIdAndCompany_CompanyId(id, companyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Number series not found"));
 
-        String prefix =
-                cleanUpper(request.getPrefix());
+        boolean unchanged =
+                series.getDepartment().equalsIgnoreCase(
+                        cleanUpper(request.getDepartment()))
+                        && series.getPrefix().equalsIgnoreCase(
+                        cleanUpper(request.getPrefix()))
+                        && series.getStartNumber().equals(request.getStartNumber())
+                        && series.getEndNumber().equals(request.getEndNumber())
+                        && series.getNumberLength().equals(request.getNumberLength());
 
-        boolean duplicate =
-                seriesRepository
-                        .existsByDepartmentIgnoreCaseAndCompany_CompanyIdAndIdNot(
-                                department,
-                                companyId,
-                                id
-                        );
-
-        if (duplicate) {
-
+        if (!unchanged) {
             throw new RuntimeException(
-                    "Number series already exists for department: "
-                            + department
-            );
+                    "A reserved series cannot be remapped. "
+                            + "Only its active status can be changed.");
         }
-
-        /*
-         * Do not allow an update that would make the
-         * already-generated number invalid.
-         */
-        Long currentNext =
-                series.getNextNumber();
-
-        if (
-                request.getStartNumber()
-                        > currentNext
-        ) {
-
-            throw new RuntimeException(
-                    "Starting number cannot be greater than the current next number"
-            );
-        }
-
-        if (
-                request.getEndNumber()
-                        < currentNext
-        ) {
-
-            throw new RuntimeException(
-                    "Ending number cannot be less than the current next number"
-            );
-        }
-
-        series.setDepartment(
-                department
-        );
-
-        series.setPrefix(
-                prefix
-        );
-
-        series.setStartNumber(
-                request.getStartNumber()
-        );
-
-        series.setEndNumber(
-                request.getEndNumber()
-        );
-
-        series.setNumberLength(
-                request.getNumberLength()
-        );
 
         if (request.getActive() != null) {
-
-            series.setActive(
-                    request.getActive()
-            );
+            series.setActive(request.getActive());
         }
 
-        EmployeeNumberSeries saved =
-                seriesRepository.save(series);
-
-        return new NumberSeriesResponse(saved);
+        return new NumberSeriesResponse(seriesRepository.save(series));
     }
-
-    // ============================================================
-    // DELETE SERIES
-    // ============================================================
 
     @Transactional
-    public void deleteSeries(
-            Long id
-    ) {
+    public void deleteSeries(Long id) {
+        String companyId = currentUserService.getCurrentCompanyId();
 
-        String companyId =
-                currentUserService.getCurrentCompanyId();
+        EmployeeNumberSeries series = seriesRepository
+                .findByIdAndCompany_CompanyId(id, companyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Number series not found"));
 
-        EmployeeNumberSeries series =
-                seriesRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                companyId
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Number series not found"
-                                )
-                        );
-
-        /*
-         * Do not delete a series after it has started
-         * generating employee IDs.
-         *
-         * This protects existing employee ID generation.
-         */
-        if (
-                !series.getNextNumber()
-                        .equals(series.getStartNumber())
-        ) {
-
-            throw new RuntimeException(
-                    "Cannot delete a number series after employee IDs have been generated. Deactivate it instead."
-            );
-        }
-
-        seriesRepository.delete(series);
+        throw new RuntimeException(
+                "Reserved IDs must remain protected. Deactivate this series instead.");
     }
 
-    // ============================================================
-    // GENERATE NEXT EMPLOYEE ID
-    //
-    // Called by EmployeeService when creating an employee.
-    // ============================================================
-
+    /*
+     * Kept so older code still compiles, but creating a new employee by
+     * generating another ID is no longer allowed. Complete a reserved ID.
+     */
     @Transactional
-    public String generateNextEmployeeId(
-            String department
-    ) {
-
-        String companyId =
-                currentUserService.getCurrentCompanyId();
-
-        EmployeeNumberSeries series =
-                seriesRepository
-                        .findByDepartmentIgnoreCaseAndCompany_CompanyId(
-                                department,
-                                companyId
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "No number series configured for department: "
-                                                + department
-                                )
-                        );
-
-        if (!series.isActive()) {
-
-            throw new RuntimeException(
-                    "Number series is inactive for department: "
-                            + department
-            );
-        }
-
-        Long nextNumber =
-                series.getNextNumber();
-
-        if (
-                nextNumber
-                        > series.getEndNumber()
-        ) {
-
-            throw new RuntimeException(
-                    "Number series limit reached for department: "
-                            + department
-            );
-        }
-
-        String employeeId =
-                buildEmployeeId(
-                        series.getPrefix(),
-                        nextNumber,
-                        series.getNumberLength()
-                );
-
-        /*
-         * Make sure the generated employee ID is not
-         * already used by this company.
-         */
-        if (
-                employeeRepository
-                        .existsByEmployeeIdAndCompany_CompanyId(
-                                employeeId,
-                                companyId
-                        )
-        ) {
-
-            throw new RuntimeException(
-                    "Generated employee ID already exists: "
-                            + employeeId
-            );
-        }
-
-        /*
-         * Move the series forward.
-         */
-        series.setNextNumber(
-                nextNumber + 1
-        );
-
-        seriesRepository.save(series);
-
-        return employeeId;
+    public String generateNextEmployeeId(String department) {
+        throw new RuntimeException(
+                "Select an existing reserved employee ID and complete its details.");
     }
 
-    // ============================================================
-    // VALIDATION
-    // ============================================================
-
-    private void validateRequest(
-            NumberSeriesRequest request
-    ) {
-
+    private void validateRequest(NumberSeriesRequest request) {
         if (request == null) {
-
-            throw new RuntimeException(
-                    "Number series data is required"
-            );
+            throw new RuntimeException("Number series data is required");
         }
 
-        if (
-                request.getDepartment() == null
-                        ||
-                        request.getDepartment()
-                                .trim()
-                                .isEmpty()
-        ) {
-
-            throw new RuntimeException(
-                    "Department is required"
-            );
+        if (request.getDepartment() == null
+                || request.getDepartment().trim().isEmpty()) {
+            throw new RuntimeException("Department is required");
         }
 
-        if (
-                request.getPrefix() == null
-                        ||
-                        request.getPrefix()
-                                .trim()
-                                .isEmpty()
-        ) {
-
-            throw new RuntimeException(
-                    "Prefix is required"
-            );
+        if (request.getPrefix() == null
+                || !request.getPrefix().trim().matches("[A-Za-z]+")) {
+            throw new RuntimeException("Prefix must contain letters only");
         }
 
-        if (
-                !request.getPrefix()
-                        .trim()
-                        .matches("[A-Za-z]+")
-        ) {
-
-            throw new RuntimeException(
-                    "Prefix can contain letters only"
-            );
+        if (request.getStartNumber() == null
+                || request.getEndNumber() == null) {
+            throw new RuntimeException("Start and end numbers are required");
         }
 
-        if (request.getStartNumber() == null) {
-
-            throw new RuntimeException(
-                    "Starting number is required"
-            );
+        if (request.getStartNumber() < 0
+                || request.getEndNumber() < request.getStartNumber()) {
+            throw new RuntimeException("Invalid number range");
         }
 
-        if (request.getEndNumber() == null) {
-
+        if (request.getNumberLength() == null
+                || request.getNumberLength() < 1
+                || request.getNumberLength() > 10) {
             throw new RuntimeException(
-                    "Ending number is required"
-            );
-        }
-
-        if (
-                request.getStartNumber()
-                        < 0
-        ) {
-
-            throw new RuntimeException(
-                    "Starting number cannot be negative"
-            );
-        }
-
-        if (
-                request.getEndNumber()
-                        < 0
-        ) {
-
-            throw new RuntimeException(
-                    "Ending number cannot be negative"
-            );
-        }
-
-        if (
-                request.getStartNumber()
-                        > request.getEndNumber()
-        ) {
-
-            throw new RuntimeException(
-                    "Starting number cannot be greater than ending number"
-            );
-        }
-
-        if (request.getNumberLength() == null) {
-
-            throw new RuntimeException(
-                    "Number length is required"
-            );
-        }
-
-        if (
-                request.getNumberLength()
-                        < 1
-                        ||
-                        request.getNumberLength()
-                                > 10
-        ) {
-
-            throw new RuntimeException(
-                    "Number length must be between 1 and 10"
-            );
-        }
-
-        long maximumForLength =
-                calculateMaximumNumber(
-                        request.getNumberLength()
-                );
-
-        if (
-                request.getEndNumber()
-                        > maximumForLength
-        ) {
-
-            throw new RuntimeException(
-                    "Ending number does not fit within the selected number length"
-            );
+                    "Number length must be between 1 and 10");
         }
     }
-
-    // ============================================================
-    // BUILD EMPLOYEE ID
-    // ============================================================
 
     private String buildEmployeeId(
-            String prefix,
-            Long number,
-            Integer numberLength
-    ) {
-
-        return prefix +
-                String.format(
-                        "%0" + numberLength + "d",
-                        number
-                );
+            String prefix, long number, int numberLength) {
+        return prefix + String.format("%0" + numberLength + "d", number);
     }
 
-    // ============================================================
-    // MAX NUMBER FOR LENGTH
-    // ============================================================
-
-    private long calculateMaximumNumber(
-            int length
-    ) {
-
-        long maximum = 1;
-
-        for (int i = 0; i < length; i++) {
-
-            maximum *= 10;
-        }
-
-        return maximum - 1;
-    }
-
-    // ============================================================
-    // CLEAN STRING
-    // ============================================================
-
-    private String cleanUpper(
-            String value
-    ) {
-
-        return value
-                .trim()
-                .toUpperCase();
+    private String cleanUpper(String value) {
+        return value.trim().toUpperCase();
     }
 }

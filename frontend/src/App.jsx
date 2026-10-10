@@ -36,6 +36,7 @@ import MasterDataNoSeries from "./pages/MasterDataNoSeries";
 import Attendance from "./pages/Attendance";
 
 import "./App.css";
+import AdminLayout from "./pages/AdminLayout";
 
 
 // ======================================================
@@ -529,6 +530,16 @@ function App() {
                             to="/"
                             replace
                         />
+                    }
+                />
+                <Route
+                    path="/admin/employee-create"
+                    element={
+                        <ProtectedRoute>
+                            <AdminLayout>
+                                <EmployeeDataCreate />
+                            </AdminLayout>
+                        </ProtectedRoute>
                     }
                 />
 

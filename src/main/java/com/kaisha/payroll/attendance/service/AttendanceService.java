@@ -540,31 +540,28 @@ public class AttendanceService {
         return user.getCompany();
     }
 
-    private Employee getEmployee(
-            String employeeId,
-            String companyId
-    ) {
-
-        if (employeeId == null ||
-                employeeId.isBlank()) {
-
-            throw new RuntimeException(
-                    "Employee ID is required"
-            );
+    private Employee getEmployee(String employeeId, String companyId) {
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            throw new RuntimeException("Employee ID is required");
         }
 
-        return employeeRepository
-                .findByEmployeeIdAndCompany_CompanyId(
-                        employeeId.trim(),
-                        companyId
-                )
+        Employee employee = employeeRepository
+                .findByEmployeeIdAndCompany_CompanyId(employeeId, companyId)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Employee not found: "
-                                        + employeeId
-                        )
-                );
+                        new RuntimeException("Employee not found"));
+
+        if (!employee.isActive()) {
+            throw new RuntimeException("Inactive employees cannot record attendance");
+        }
+
+        if (!employee.isDetailsCompleted()) {
+            throw new RuntimeException(
+                    "Complete employee details before recording attendance");
+        }
+
+        return employee;
     }
+
 
     private void validateRequest(
             AttendanceRequest request

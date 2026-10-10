@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Downloads.css";
-
+import AdminLayout from "../pages/AdminLayout";
 const API_BASE_URL = "http://localhost:8080/api";
 
 const DOCUMENTS = [
@@ -272,6 +272,7 @@ const Downloads = () => {
     };
 
     return (
+        <AdminLayout>
         <div className="downloads-page">
 
             <div className="downloads-header">
@@ -586,6 +587,7 @@ const Downloads = () => {
             </div>
 
         </div>
+        </AdminLayout>
     );
 };
 
