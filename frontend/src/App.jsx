@@ -10,7 +10,10 @@ import {
     useState
 } from "react";
 
-import Login from "./pages/Login";
+import LoginSelection from "./pages/LoginSelection";
+import AdminLogin from "./pages/AdminLogin";
+import StaffLogin from "./pages/StaffLogin";
+
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 
@@ -25,7 +28,16 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import EmployeeDataCreate from "./pages/EmployeeDataCreate";
 import Salary from "./pages/Salary";
 
+import Report from "./pages/Report";
+import StaffIdPassword from "./pages/StaffIdPassword";
+import Calendar from "./pages/Calendar";
+import Downloads from "./pages/Downloads";
+import MasterDataNoSeries from "./pages/MasterDataNoSeries";
+import Attendance from "./pages/Attendance";
+
 import "./App.css";
+import AdminLayout from "./pages/AdminLayout";
+
 
 // ======================================================
 // ROOT
@@ -36,6 +48,7 @@ function Root() {
     const [status, setStatus] =
         useState("checking");
 
+
     useEffect(() => {
 
         fetch(
@@ -44,6 +57,7 @@ function Root() {
             .then(response => {
 
                 if (!response.ok) {
+
                     throw new Error(
                         "Registration status API failed"
                     );
@@ -56,8 +70,11 @@ function Root() {
                 if (
                     data.registrationAvailable === true
                 ) {
+
                     setStatus("register");
+
                 } else {
+
                     setStatus("login");
                 }
 
@@ -73,6 +90,7 @@ function Root() {
             });
 
     }, []);
+
 
     if (status === "checking") {
 
@@ -93,11 +111,22 @@ function Root() {
         );
     }
 
+
+    /*
+     * First-time application:
+     * Show registration page.
+     */
     if (status === "register") {
+
         return <Register />;
     }
 
-    return <Login />;
+
+    /*
+     * Company already registered:
+     * Show login selection.
+     */
+    return <LoginSelection />;
 }
 
 
@@ -110,6 +139,7 @@ function RegisterGuard() {
     const [status, setStatus] =
         useState("checking");
 
+
     useEffect(() => {
 
         fetch(
@@ -118,6 +148,7 @@ function RegisterGuard() {
             .then(response => {
 
                 if (!response.ok) {
+
                     throw new Error(
                         "Registration status API failed"
                     );
@@ -130,8 +161,11 @@ function RegisterGuard() {
                 if (
                     data.registrationAvailable === true
                 ) {
+
                     setStatus("register");
+
                 } else {
+
                     setStatus("login");
                 }
 
@@ -147,6 +181,7 @@ function RegisterGuard() {
             });
 
     }, []);
+
 
     if (status === "checking") {
 
@@ -167,6 +202,7 @@ function RegisterGuard() {
         );
     }
 
+
     if (status === "login") {
 
         return (
@@ -176,6 +212,7 @@ function RegisterGuard() {
             />
         );
     }
+
 
     return <Register />;
 }
@@ -203,12 +240,32 @@ function App() {
 
 
                 {/* =================================================
-                    LOGIN
+                    LOGIN SELECTION
                 ================================================= */}
 
                 <Route
                     path="/login"
-                    element={<Login />}
+                    element={<LoginSelection />}
+                />
+
+
+                {/* =================================================
+                    ADMIN LOGIN
+                ================================================= */}
+
+                <Route
+                    path="/admin-login"
+                    element={<AdminLogin />}
+                />
+
+
+                {/* =================================================
+                    STAFF LOGIN
+                ================================================= */}
+
+                <Route
+                    path="/staff-login"
+                    element={<StaffLogin />}
                 />
 
 
@@ -265,6 +322,133 @@ function App() {
 
 
                 {/* =================================================
+                    ADMIN MASTER DATA
+                ================================================= */}
+
+                <Route
+                    path="/admin/master-data"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <MasterDataNoSeries />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN EMPLOYEE DATA CREATE
+                    ADMIN + STAFF
+                ================================================= */}
+
+                <Route
+                    path="/admin/employee-create"
+                    element={
+                        <ProtectedRoute>
+                            <EmployeeDataCreate />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN DEPARTMENT
+                ================================================= */}
+
+                <Route
+                    path="/admin/department"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <Department />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN SALARY
+                ================================================= */}
+
+                <Route
+                    path="/admin/salary"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <Salary />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN REPORT
+                ================================================= */}
+
+                <Route
+                    path="/admin/report"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <Report />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN ATTENDANCE
+                ================================================= */}
+
+                <Route
+                    path="/admin/attendance"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <Attendance />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN STAFF ID & PASSWORD
+                ================================================= */}
+
+                <Route
+                    path="/admin/staff-id-password"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <StaffIdPassword />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
+                    ADMIN CALENDAR
+                ================================================= */}
+
+                <Route
+                    path="/admin/calendar"
+                    element={
+                        <ProtectedRoute
+                            requiredRole="ADMIN"
+                        >
+                            <Calendar />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =================================================
                     ADMIN HELP & SUPPORT
                 ================================================= */}
 
@@ -284,68 +468,16 @@ function App() {
 
 
                 {/* =================================================
-                    ADMIN DEPARTMENT
-                    REAL Department.jsx
+                    ADMIN DOWNLOADS
                 ================================================= */}
 
                 <Route
-                    path="/admin/department"
+                    path="/admin/downloads"
                     element={
                         <ProtectedRoute
                             requiredRole="ADMIN"
                         >
-                            <Department />
-                        </ProtectedRoute>
-                    }
-                />
-
-
-                {/* =================================================
-                    ADMIN SALARY
-                    REAL Salary.jsx
-                ================================================= */}
-
-                <Route
-                    path="/admin/salary"
-                    element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
-                            <Salary />
-                        </ProtectedRoute>
-                    }
-                />
-
-
-                {/* =================================================
-                    MASTER DATA
-                ================================================= */}
-
-                <Route
-                    path="/admin/master-data"
-                    element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
-                            <AdminModulePage
-                                title="Master Data No. Series"
-                                description="Manage employee and document number series."
-                            />
-                        </ProtectedRoute>
-                    }
-                />
-
-
-                {/* =================================================
-                    EMPLOYEE DATA CREATE
-                    ADMIN + STAFF
-                ================================================= */}
-
-                <Route
-                    path="/admin/employee-create"
-                    element={
-                        <ProtectedRoute>
-                            <EmployeeDataCreate />
+                            <Downloads />
                         </ProtectedRoute>
                     }
                 />
@@ -371,25 +503,6 @@ function App() {
 
 
                 {/* =================================================
-                    ATTENDANCE
-                ================================================= */}
-
-                <Route
-                    path="/admin/attendance"
-                    element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
-                            <AdminModulePage
-                                title="Attendance"
-                                description="Manage employee attendance and punch records."
-                            />
-                        </ProtectedRoute>
-                    }
-                />
-
-
-                {/* =================================================
                     STAFF DASHBOARD
                 ================================================= */}
 
@@ -407,6 +520,7 @@ function App() {
 
                 {/* =================================================
                     UNKNOWN ROUTE
+                    MUST BE LAST
                 ================================================= */}
 
                 <Route
@@ -418,11 +532,22 @@ function App() {
                         />
                     }
                 />
+                <Route
+                    path="/admin/employee-create"
+                    element={
+                        <ProtectedRoute>
+                            <AdminLayout>
+                                <EmployeeDataCreate />
+                            </AdminLayout>
+                        </ProtectedRoute>
+                    }
+                />
 
             </Routes>
 
         </BrowserRouter>
     );
 }
+
 
 export default App;

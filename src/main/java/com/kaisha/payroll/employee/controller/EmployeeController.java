@@ -59,20 +59,42 @@ public class EmployeeController {
                         })
                         .toList();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                response
+        );
     }
 
     // ============================================================
     // CREATE EMPLOYEE
     // ADMIN ONLY
+    //
+    // Request:
+    //
+    // {
+    //     "department": "HR"
+    // }
+    //
+    // Response:
+    //
+    // {
+    //     "message": "Employee created successfully",
+    //     "employeeId": "HR001"
+    // }
     // ============================================================
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createEmployee() {
+    public ResponseEntity<?> createEmployee(
+            @RequestBody Map<String, String> body
+    ) {
+
+        String department =
+                body.get("department");
 
         Employee employee =
-                employeeService.createEmployee();
+                employeeService.createEmployee(
+                        department
+                );
 
         Map<String, Object> response =
                 new HashMap<>();
@@ -85,6 +107,11 @@ public class EmployeeController {
         response.put(
                 "employeeId",
                 employee.getEmployeeId()
+        );
+
+        response.put(
+                "department",
+                department
         );
 
         return ResponseEntity
@@ -111,7 +138,8 @@ public class EmployeeController {
     }
 
     // ============================================================
-    // ADMIN ADD FIELD
+    // ADD EMPLOYEE FIELD
+    // ADMIN ONLY
     // ============================================================
 
     @PostMapping("/{employeeId}/fields")
@@ -134,7 +162,8 @@ public class EmployeeController {
     }
 
     // ============================================================
-    // ADMIN EDIT FIELD
+    // UPDATE EMPLOYEE FIELD
+    // ADMIN ONLY
     // ============================================================
 
     @PutMapping("/{employeeId}/fields/{fieldId}")
@@ -153,11 +182,14 @@ public class EmployeeController {
                         body.get("fieldValue")
                 );
 
-        return ResponseEntity.ok(field);
+        return ResponseEntity.ok(
+                field
+        );
     }
 
     // ============================================================
-    // ADMIN DELETE FIELD
+    // DELETE EMPLOYEE FIELD
+    // ADMIN ONLY
     // ============================================================
 
     @DeleteMapping("/{employeeId}/fields/{fieldId}")
@@ -180,13 +212,20 @@ public class EmployeeController {
                 "Employee field deleted successfully"
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                response
+        );
     }
 
     // ============================================================
-    // ADMIN CHANGE EMPLOYEE ID PREFIX
+    // UPDATE EMPLOYEE PREFIX
+    // ADMIN ONLY
     //
-    // E001 -> T001
+    // Example:
+    //
+    // HR001
+    //     ↓
+    // STAFF001
     // ============================================================
 
     @PutMapping("/{employeeId}/prefix")
@@ -215,6 +254,8 @@ public class EmployeeController {
                 employee.getEmployeeId()
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                response
+        );
     }
 }

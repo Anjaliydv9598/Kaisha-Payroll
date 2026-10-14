@@ -16,6 +16,20 @@ function AdminDashboard() {
 
     /*
      * Dashboard modules
+     *
+     * Order:
+     * 1. Company
+     * 2. Master Data No. Series
+     * 3. Employee Data Creation
+     * 4. Department
+     * 5. Salary
+     * 6. Report
+     * 7. Attendance
+     * 8. Staff ID & Password
+     * 9. Calendar
+     * 10. Help & Support
+     * 11. Downloads
+     * 12. Add +
      */
 
     const modules = [
@@ -23,18 +37,27 @@ function AdminDashboard() {
             id: "company",
             title: "Company",
             description:
-                "Manage company information and settings.",
+                "Create & change company.",
             icon: "🏢",
             path: "/admin/company"
         },
 
         {
-            id: "help-support",
-            title: "Help & Support",
+            id: "master-data",
+            title: "Master Data No. Series",
             description:
-                "View and manage staff support queries.",
-            icon: "✉",
-            path: "/admin/help-support"
+                "Manage employee and document number series.",
+            icon: "#",
+            path: "/admin/master-data"
+        },
+
+        {
+            id: "employee-create",
+            title: "Employee Data Creation",
+            description:
+                "Create and manage employee records.",
+            icon: "👤",
+            path: "/admin/employee-create"
         },
 
         {
@@ -56,39 +79,57 @@ function AdminDashboard() {
         },
 
         {
-            id: "master-data",
-            title: "Master Data No. Series",
+            id: "report",
+            title: "Report",
             description:
-                "Manage employee and document number series.",
-            icon: "#",
-            path: "/admin/master-data"
-        },
-
-        {
-            id: "employee-create",
-            title: "Employee Data Create",
-            description:
-                "Create and manage employee records.",
-            icon: "👤",
-            path: "/admin/employee-create"
-        },
-
-        {
-            id: "salary-components",
-            title: "Salary Component of Every Employee",
-            description:
-                "Manage individual employee salary components.",
-            icon: "₹",
-            path: "/admin/salary-components"
+                "View and manage payroll reports.",
+            icon: "▤",
+            path: "/admin/report"
         },
 
         {
             id: "attendance",
             title: "Attendance",
             description:
-                "Manage employee attendance and punch records.",
+                "Manage employee attendance records.",
             icon: "✓",
             path: "/admin/attendance"
+        },
+
+        {
+            id: "staff-id-password",
+            title: "Staff ID & Password",
+            description:
+                "Create staff ID, password & reset password.",
+            icon: "🔐",
+            path: "/admin/staff-id-password"
+        },
+
+        {
+            id: "calendar",
+            title: "Calendar",
+            description:
+                "Manage holidays, leaves & dates.",
+            icon: "▣",
+            path: "/admin/calendar"
+        },
+
+        {
+            id: "help-support",
+            title: "Help & Support",
+            description:
+                "Manage support queries.",
+            icon: "✉",
+            path: "/admin/help-support"
+        },
+
+        {
+            id: "downloads",
+            title: "Downloads",
+            description:
+                "Download payroll and employee documents.",
+            icon: "⇩",
+            path: "/admin/downloads"
         }
     ];
 
