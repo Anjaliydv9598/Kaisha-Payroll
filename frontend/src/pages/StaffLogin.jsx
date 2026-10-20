@@ -57,7 +57,7 @@ function StaffLogin() {
         try {
 
             const response = await fetch(
-                "http://localhost:8080/api/auth/staff-login",
+                import.meta.env.VITE_API_BASE_URL + "/auth/staff-login",
                 {
                     method: "POST",
 

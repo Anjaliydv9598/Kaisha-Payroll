@@ -36,7 +36,7 @@ function ForgotPassword() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/auth/forgot-password/send-otp",
+                import.meta.env.VITE_API_BASE_URL + "/auth/forgot-password/send-otp",
                 {
                     method: "POST",
                     headers: {
@@ -88,7 +88,7 @@ function ForgotPassword() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/auth/forgot-password/verify-otp",
+                import.meta.env.VITE_API_BASE_URL + "/auth/forgot-password/verify-otp",
                 {
                     method: "POST",
                     headers: {
@@ -152,7 +152,7 @@ function ForgotPassword() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/auth/forgot-password/reset",
+                import.meta.env.VITE_API_BASE_URL + "/auth/forgot-password/reset",
                 {
                     method: "POST",
                     headers: {

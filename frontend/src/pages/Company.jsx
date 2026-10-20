@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./Company.css";
 import AdminLayout from "../pages/AdminLayout";
 
-const API_URL = "http://localhost:8080/api/company";
+const API_URL = import.meta.env.VITE_API_BASE_URL + "/company";
 
 const Company = () => {
     const token = localStorage.getItem("token");

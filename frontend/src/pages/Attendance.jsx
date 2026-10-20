@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Attendance.css";
 
-const API_URL = "http://localhost:8080/api/attendance";
-const EMPLOYEE_API_URL = "http://localhost:8080/api/employees";
+const API_URL = import.meta.env.VITE_API_BASE_URL + "/attendance";
+const EMPLOYEE_API_URL = import.meta.env.VITE_API_BASE_URL + "/employees";
 
 const STATUS_OPTIONS = [
     "PRESENT",

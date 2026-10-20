@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./MasterDataNoSeries.css";
 import AdminLayout from "../pages/AdminLayout";
-const API_URL = "http://localhost:8080/api/employee-number-series";
+const API_URL = import.meta.env.VITE_API_BASE_URL + "/employee-number-series";
 
 function MasterDataNoSeries() {
 

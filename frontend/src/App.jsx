@@ -52,7 +52,7 @@ function Root() {
     useEffect(() => {
 
         fetch(
-            "http://localhost:8080/api/auth/registration-status"
+            import.meta.env.VITE_API_BASE_URL + "/auth/registration-status"
         )
             .then(response => {
 
@@ -143,7 +143,7 @@ function RegisterGuard() {
     useEffect(() => {
 
         fetch(
-            "http://localhost:8080/api/auth/registration-status"
+            import.meta.env.VITE_API_BASE_URL + "/auth/registration-status"
         )
             .then(response => {
 

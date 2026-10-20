@@ -159,7 +159,7 @@ function AdminDashboard() {
 
 
                 const response = await fetch(
-                    "http://localhost:8080/api/me",
+                    import.meta.env.VITE_API_BASE_URL + "/me",
                     {
                         method: "GET",
                         headers: {
