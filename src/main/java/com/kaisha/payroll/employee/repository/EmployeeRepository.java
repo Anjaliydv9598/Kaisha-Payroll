@@ -8,31 +8,26 @@ import java.util.Optional;
 
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
-    List<Employee>
-    findByCompany_CompanyIdAndActiveTrueOrderByEmployeeIdAsc(
-            String companyId
-    );
+    List<Employee> findByCompany_CompanyIdAndActiveTrueOrderByEmployeeIdAsc(
+            String companyId);
+
+    List<Employee> findByCompany_CompanyIdOrderByEmployeeIdAsc(
+            String companyId);
 
     List<Employee>
-    findByCompany_CompanyIdOrderByEmployeeIdAsc(
-            String companyId
-    );
+    findByCompany_CompanyIdAndDetailsCompletedTrueAndActiveTrueOrderByEmployeeIdAsc(
+            String companyId);
 
-    Optional<Employee>
-    findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
-            String employeeId,
-            String companyId
-    );
+    List<Employee>
+    findByCompany_CompanyIdAndDetailsCompletedFalseOrderByEmployeeIdAsc(
+            String companyId);
 
-    Optional<Employee>
-    findByEmployeeIdAndCompany_CompanyId(
-            String employeeId,
-            String companyId
-    );
+    Optional<Employee> findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
+            String employeeId, String companyId);
 
-    boolean
-    existsByEmployeeIdAndCompany_CompanyId(
-            String employeeId,
-            String companyId
-    );
+    Optional<Employee> findByEmployeeIdAndCompany_CompanyId(
+            String employeeId, String companyId);
+
+    boolean existsByEmployeeIdAndCompany_CompanyId(
+            String employeeId, String companyId);
 }

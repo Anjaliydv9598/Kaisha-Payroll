@@ -1,17 +1,21 @@
 package com.kaisha.payroll.employee.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(
         name = "employee_fields",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_employee_field_name",
-                        columnNames = {"employee_id", "field_name"}
-                )
-        }
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_employee_field_name",
+                columnNames = {"employee_id", "field_name"}
+        )
 )
+@Getter
+@Setter
+@NoArgsConstructor
 public class EmployeeField {
 
     @Id
@@ -28,39 +32,4 @@ public class EmployeeField {
 
     @Column(name = "field_value", columnDefinition = "TEXT")
     private String fieldValue;
-
-    public EmployeeField() {
-    }
-
-    public Long getFieldId() {
-        return fieldId;
-    }
-
-    public void setFieldId(Long fieldId) {
-        this.fieldId = fieldId;
-    }
-
-    public Employee getEmployee() {
-        return employee;
-    }
-
-    public void setEmployee(Employee employee) {
-        this.employee = employee;
-    }
-
-    public String getFieldName() {
-        return fieldName;
-    }
-
-    public void setFieldName(String fieldName) {
-        this.fieldName = fieldName;
-    }
-
-    public String getFieldValue() {
-        return fieldValue;
-    }
-
-    public void setFieldValue(String fieldValue) {
-        this.fieldValue = fieldValue;
-    }
 }

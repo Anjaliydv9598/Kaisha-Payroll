@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import AdminLayout from "../pages/AdminLayout";
 import SalaryDownload
     from "../components/salary/SalaryDownload";
 
@@ -71,7 +71,7 @@ function Salary() {
         try {
 
             const response = await fetch(
-                "http://localhost:8080/api/employees",
+                import.meta.env.VITE_API_BASE_URL + "/employees",
                 {
                     method: "GET",
                     headers: {
@@ -695,6 +695,7 @@ function Salary() {
     // =====================================================
 
     return (
+        <AdminLayout>
 
         <div className="salary-page">
 
@@ -1237,6 +1238,7 @@ function Salary() {
             )}
 
         </div>
+        </AdminLayout>
 
     );
 }
