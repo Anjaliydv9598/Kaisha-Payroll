@@ -30,7 +30,6 @@ public class MasterDataController {
         this.numberSeriesService = numberSeriesService;
     }
 
-    // Handles: GET /api/master-data/departments
     @GetMapping("/departments")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<?> getDepartments() {
@@ -42,7 +41,6 @@ public class MasterDataController {
         }
     }
 
-    // Handles: GET /api/master-data
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<?> getMasterData() {
