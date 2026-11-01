@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EmployeeNumberSeriesService {
 
+
     private final EmployeeNumberSeriesRepository seriesRepository;
     private final CompanyRepository companyRepository;
     private final EmployeeRepository employeeRepository;
