@@ -54,19 +54,24 @@ public class AuthController {
 
             User user = userService.registerUser(request);
 
-            emailService.sendRegistrationEmail(
-                    user,
-                    request.getCompanyId(),
-                    request.getCompanyName(),
-                    request.getLocation(),
-                    request.getTelephoneNumber()
-            );
+            // Wrap email in a try-catch so Gmail timeout does not crash registration
+            try {
+                emailService.sendRegistrationEmail(
+                        user,
+                        request.getCompanyId(),
+                        request.getCompanyName(),
+                        request.getLocation(),
+                        request.getTelephoneNumber()
+                );
+            } catch (Exception mailEx) {
+                System.err.println("Email failed to send, continuing registration: " + mailEx.getMessage());
+            }
 
             Map<String, Object> response = new HashMap<>();
 
             response.put(
                     "message",
-                    "Registration successful. Your admin account has been created and the confirmation email has been sent."
+                    "Registration successful. Your admin account has been created."
             );
 
             response.put(
@@ -97,7 +102,6 @@ public class AuthController {
                     .body(response);
         }
     }
-
 
     // =========================================================
     // ADMIN LOGIN

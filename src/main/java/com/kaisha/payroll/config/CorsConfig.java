@@ -19,7 +19,9 @@ public class CorsConfig {
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "http://localhost:5174"
+                        "http://localhost:5174",
+                        "https://kaisha-payroll-ten.vercel.app",
+                        "https://kaisha-payroll-17d9a1nak-anjali-s-projects24.vercel.app"
                 )
         );
 
@@ -45,9 +47,7 @@ public class CorsConfig {
         );
 
         configuration.setExposedHeaders(
-                List.of(
-                        "Authorization"
-                )
+                List.of("Authorization")
         );
 
         configuration.setAllowCredentials(true);
@@ -55,10 +55,7 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
