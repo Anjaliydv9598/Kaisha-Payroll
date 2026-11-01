@@ -129,7 +129,7 @@ export default function EmployeeDataCreate() {
         setDepartmentsLoading(true);
 
         try {
-            const response = await request("/departments");
+            const response = await request("/master-data/departments");
             const list = normalizeDepartments(response);
 
             const uniqueDepartments = Array.from(
