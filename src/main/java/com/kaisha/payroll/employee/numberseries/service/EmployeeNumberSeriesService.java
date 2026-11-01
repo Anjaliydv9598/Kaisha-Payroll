@@ -34,6 +34,10 @@ public class EmployeeNumberSeriesService {
     private final CurrentUserService currentUserService;
     private final DepartmentRepository departmentRepository;
 
+    // =========================================================
+    // GET ALL NUMBER SERIES
+    // =========================================================
+
     @Transactional(readOnly = true)
     public List<NumberSeriesResponse> getAllSeries() {
 
@@ -45,6 +49,10 @@ public class EmployeeNumberSeriesService {
                 .map(NumberSeriesResponse::new)
                 .collect(Collectors.toList());
     }
+
+    // =========================================================
+    // GET NUMBER SERIES BY ID
+    // =========================================================
 
     @Transactional(readOnly = true)
     public NumberSeriesResponse getSeries(Long id) {
@@ -59,6 +67,10 @@ public class EmployeeNumberSeriesService {
         return new NumberSeriesResponse(series);
     }
 
+    // =========================================================
+    // CREATE NUMBER SERIES
+    // =========================================================
+
     @Transactional
     public NumberSeriesResponse createSeries(NumberSeriesRequest request) {
 
@@ -72,9 +84,6 @@ public class EmployeeNumberSeriesService {
 
         String department = cleanUpper(request.getDepartment());
         String prefix = cleanUpper(request.getPrefix());
-
-        // Automatically create or reactivate the Department.
-        syncDepartment(company, companyId, department);
 
         if (seriesRepository
                 .existsByDepartmentIgnoreCaseAndCompany_CompanyId(
@@ -123,6 +132,14 @@ public class EmployeeNumberSeriesService {
         EmployeeNumberSeries savedSeries =
                 seriesRepository.save(series);
 
+        // Synchronize Department with the saved Number Series.
+        syncDepartment(
+                company,
+                companyId,
+                department,
+                savedSeries.isActive()
+        );
+
         // Create reserved employee records.
         List<Employee> employees = new ArrayList<>();
 
@@ -167,6 +184,10 @@ public class EmployeeNumberSeriesService {
         return new NumberSeriesResponse(savedSeries);
     }
 
+    // =========================================================
+    // UPDATE NUMBER SERIES
+    // =========================================================
+
     @Transactional
     public NumberSeriesResponse updateSeries(
             Long id,
@@ -203,9 +224,23 @@ public class EmployeeNumberSeriesService {
             series.setActive(request.getActive());
         }
 
-        return new NumberSeriesResponse(
-                seriesRepository.save(series));
+        EmployeeNumberSeries updatedSeries =
+                seriesRepository.save(series);
+
+        // Synchronize Department active status.
+        syncDepartment(
+                updatedSeries.getCompany(),
+                companyId,
+                updatedSeries.getDepartment(),
+                updatedSeries.isActive()
+        );
+
+        return new NumberSeriesResponse(updatedSeries);
     }
+
+    // =========================================================
+    // DELETE NUMBER SERIES
+    // =========================================================
 
     @Transactional
     public void deleteSeries(Long id) {
@@ -221,13 +256,15 @@ public class EmployeeNumberSeriesService {
                 "Reserved IDs must remain protected. Deactivate this series instead.");
     }
 
-    /*
-     * Synchronize Department with Employee Number Series.
-     */
+    // =========================================================
+    // SYNCHRONIZE DEPARTMENT WITH NUMBER SERIES
+    // =========================================================
+
     private void syncDepartment(
             Company company,
             String companyId,
-            String departmentName) {
+            String departmentName,
+            boolean active) {
 
         Department department = departmentRepository
                 .findByCompany_CompanyIdAndDepartmentNameIgnoreCase(
@@ -238,11 +275,13 @@ public class EmployeeNumberSeriesService {
 
         if (department != null) {
 
-            if (!department.isActive()) {
-                department.setActive(true);
-                departmentRepository.save(department);
-            }
+            department.setActive(active);
+            departmentRepository.save(department);
+            return;
+        }
 
+        // Do not create inactive departments.
+        if (!active) {
             return;
         }
 
@@ -255,16 +294,50 @@ public class EmployeeNumberSeriesService {
         departmentRepository.save(newDepartment);
     }
 
-    /*
-     * New employee IDs cannot be generated separately.
-     * Complete an already reserved employee ID instead.
-     */
+    // =========================================================
+    // ONE-TIME SYNCHRONIZATION FOR EXISTING NUMBER SERIES
+    // =========================================================
+
+    @Transactional
+    public void syncExistingSeriesWithDepartments() {
+
+        String companyId = currentUserService.getCurrentCompanyId();
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Company not found"));
+
+        List<EmployeeNumberSeries> seriesList =
+                seriesRepository
+                        .findByCompany_CompanyIdOrderByDepartmentAsc(
+                                companyId
+                        );
+
+        for (EmployeeNumberSeries series : seriesList) {
+
+            syncDepartment(
+                    company,
+                    companyId,
+                    series.getDepartment(),
+                    series.isActive()
+            );
+        }
+    }
+
+    // =========================================================
+    // EMPLOYEE ID GENERATION BLOCK
+    // =========================================================
+
     @Transactional
     public String generateNextEmployeeId(String department) {
 
         throw new RuntimeException(
                 "Select an existing reserved employee ID and complete its details.");
     }
+
+    // =========================================================
+    // VALIDATION
+    // =========================================================
 
     private void validateRequest(NumberSeriesRequest request) {
 
@@ -306,6 +379,10 @@ public class EmployeeNumberSeriesService {
                     "Number length must be between 1 and 10");
         }
     }
+
+    // =========================================================
+    // HELPER METHODS
+    // =========================================================
 
     private String buildEmployeeId(
             String prefix,
