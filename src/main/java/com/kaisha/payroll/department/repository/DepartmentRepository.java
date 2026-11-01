@@ -1,6 +1,8 @@
+
 package com.kaisha.payroll.department.repository;
 
 import com.kaisha.payroll.department.entity.Department;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -33,5 +35,12 @@ public interface DepartmentRepository
             String companyId,
             String departmentName,
             Long departmentId
+    );
+
+    // Find a department whether active or inactive.
+    Optional<Department>
+    findByCompany_CompanyIdAndDepartmentNameIgnoreCase(
+            String companyId,
+            String departmentName
     );
 }

@@ -1,8 +1,11 @@
+
 package com.kaisha.payroll.employee.numberseries.service;
 
 import com.kaisha.payroll.auth.service.CurrentUserService;
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.company.repository.CompanyRepository;
+import com.kaisha.payroll.department.entity.Department;
+import com.kaisha.payroll.department.repository.DepartmentRepository;
 import com.kaisha.payroll.employee.entity.Employee;
 import com.kaisha.payroll.employee.entity.EmployeeField;
 import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesRequest;
@@ -11,6 +14,7 @@ import com.kaisha.payroll.employee.numberseries.entity.EmployeeNumberSeries;
 import com.kaisha.payroll.employee.numberseries.repository.EmployeeNumberSeriesRepository;
 import com.kaisha.payroll.employee.repository.EmployeeFieldRepository;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +32,11 @@ public class EmployeeNumberSeriesService {
     private final EmployeeRepository employeeRepository;
     private final EmployeeFieldRepository employeeFieldRepository;
     private final CurrentUserService currentUserService;
+    private final DepartmentRepository departmentRepository;
 
     @Transactional(readOnly = true)
     public List<NumberSeriesResponse> getAllSeries() {
+
         String companyId = currentUserService.getCurrentCompanyId();
 
         return seriesRepository
@@ -42,6 +48,7 @@ public class EmployeeNumberSeriesService {
 
     @Transactional(readOnly = true)
     public NumberSeriesResponse getSeries(Long id) {
+
         String companyId = currentUserService.getCurrentCompanyId();
 
         EmployeeNumberSeries series = seriesRepository
@@ -54,6 +61,7 @@ public class EmployeeNumberSeriesService {
 
     @Transactional
     public NumberSeriesResponse createSeries(NumberSeriesRequest request) {
+
         validateRequest(request);
 
         String companyId = currentUserService.getCurrentCompanyId();
@@ -65,9 +73,13 @@ public class EmployeeNumberSeriesService {
         String department = cleanUpper(request.getDepartment());
         String prefix = cleanUpper(request.getPrefix());
 
+        // Automatically create or reactivate the Department.
+        syncDepartment(company, companyId, department);
+
         if (seriesRepository
                 .existsByDepartmentIgnoreCaseAndCompany_CompanyId(
                         department, companyId)) {
+
             throw new RuntimeException(
                     "A series already exists for department " + department);
         }
@@ -80,19 +92,25 @@ public class EmployeeNumberSeriesService {
                     "A maximum of 10000 IDs can be reserved at one time");
         }
 
-        // Pre-check all IDs before saving any records.
+        // Check all employee IDs before saving.
         for (long number = start; number <= end; number++) {
+
             String employeeId = buildEmployeeId(
-                    prefix, number, request.getNumberLength());
+                    prefix,
+                    number,
+                    request.getNumberLength()
+            );
 
             if (employeeRepository.existsByEmployeeIdAndCompany_CompanyId(
                     employeeId, companyId)) {
+
                 throw new RuntimeException(
                         "Employee ID already exists: " + employeeId);
             }
         }
 
         EmployeeNumberSeries series = new EmployeeNumberSeries();
+
         series.setCompany(company);
         series.setDepartment(department);
         series.setPrefix(prefix);
@@ -102,31 +120,45 @@ public class EmployeeNumberSeriesService {
         series.setNextNumber(end + 1);
         series.setActive(request.getActive() == null || request.getActive());
 
-        EmployeeNumberSeries savedSeries = seriesRepository.save(series);
+        EmployeeNumberSeries savedSeries =
+                seriesRepository.save(series);
 
-        List<Employee> employees = new ArrayList<Employee>();
+        // Create reserved employee records.
+        List<Employee> employees = new ArrayList<>();
 
         for (long number = start; number <= end; number++) {
+
             Employee employee = new Employee();
+
             employee.setEmployeeId(
-                    buildEmployeeId(prefix, number,
-                            request.getNumberLength()));
+                    buildEmployeeId(
+                            prefix,
+                            number,
+                            request.getNumberLength()
+                    )
+            );
+
             employee.setCompany(company);
             employee.setActive(true);
             employee.setDetailsCompleted(false);
+
             employees.add(employee);
         }
 
         List<Employee> savedEmployees =
                 employeeRepository.saveAll(employees);
 
-        List<EmployeeField> departmentFields = new ArrayList<EmployeeField>();
+        // Save Department field for each reserved employee.
+        List<EmployeeField> departmentFields = new ArrayList<>();
 
         for (Employee employee : savedEmployees) {
+
             EmployeeField field = new EmployeeField();
+
             field.setEmployee(employee);
             field.setFieldName("Department");
             field.setFieldValue(department);
+
             departmentFields.add(field);
         }
 
@@ -137,7 +169,8 @@ public class EmployeeNumberSeriesService {
 
     @Transactional
     public NumberSeriesResponse updateSeries(
-            Long id, NumberSeriesRequest request) {
+            Long id,
+            NumberSeriesRequest request) {
 
         validateRequest(request);
 
@@ -153,9 +186,12 @@ public class EmployeeNumberSeriesService {
                         cleanUpper(request.getDepartment()))
                         && series.getPrefix().equalsIgnoreCase(
                         cleanUpper(request.getPrefix()))
-                        && series.getStartNumber().equals(request.getStartNumber())
-                        && series.getEndNumber().equals(request.getEndNumber())
-                        && series.getNumberLength().equals(request.getNumberLength());
+                        && series.getStartNumber().equals(
+                        request.getStartNumber())
+                        && series.getEndNumber().equals(
+                        request.getEndNumber())
+                        && series.getNumberLength().equals(
+                        request.getNumberLength());
 
         if (!unchanged) {
             throw new RuntimeException(
@@ -167,14 +203,16 @@ public class EmployeeNumberSeriesService {
             series.setActive(request.getActive());
         }
 
-        return new NumberSeriesResponse(seriesRepository.save(series));
+        return new NumberSeriesResponse(
+                seriesRepository.save(series));
     }
 
     @Transactional
     public void deleteSeries(Long id) {
+
         String companyId = currentUserService.getCurrentCompanyId();
 
-        EmployeeNumberSeries series = seriesRepository
+        seriesRepository
                 .findByIdAndCompany_CompanyId(id, companyId)
                 .orElseThrow(() ->
                         new RuntimeException("Number series not found"));
@@ -184,51 +222,100 @@ public class EmployeeNumberSeriesService {
     }
 
     /*
-     * Kept so older code still compiles, but creating a new employee by
-     * generating another ID is no longer allowed. Complete a reserved ID.
+     * Synchronize Department with Employee Number Series.
+     */
+    private void syncDepartment(
+            Company company,
+            String companyId,
+            String departmentName) {
+
+        Department department = departmentRepository
+                .findByCompany_CompanyIdAndDepartmentNameIgnoreCase(
+                        companyId,
+                        departmentName
+                )
+                .orElse(null);
+
+        if (department != null) {
+
+            if (!department.isActive()) {
+                department.setActive(true);
+                departmentRepository.save(department);
+            }
+
+            return;
+        }
+
+        Department newDepartment = new Department();
+
+        newDepartment.setCompany(company);
+        newDepartment.setDepartmentName(departmentName);
+        newDepartment.setActive(true);
+
+        departmentRepository.save(newDepartment);
+    }
+
+    /*
+     * New employee IDs cannot be generated separately.
+     * Complete an already reserved employee ID instead.
      */
     @Transactional
     public String generateNextEmployeeId(String department) {
+
         throw new RuntimeException(
                 "Select an existing reserved employee ID and complete its details.");
     }
 
     private void validateRequest(NumberSeriesRequest request) {
+
         if (request == null) {
             throw new RuntimeException("Number series data is required");
         }
 
         if (request.getDepartment() == null
                 || request.getDepartment().trim().isEmpty()) {
+
             throw new RuntimeException("Department is required");
         }
 
         if (request.getPrefix() == null
                 || !request.getPrefix().trim().matches("[A-Za-z]+")) {
-            throw new RuntimeException("Prefix must contain letters only");
+
+            throw new RuntimeException(
+                    "Prefix must contain letters only");
         }
 
         if (request.getStartNumber() == null
                 || request.getEndNumber() == null) {
-            throw new RuntimeException("Start and end numbers are required");
+
+            throw new RuntimeException(
+                    "Start and end numbers are required");
         }
 
         if (request.getStartNumber() < 0
                 || request.getEndNumber() < request.getStartNumber()) {
+
             throw new RuntimeException("Invalid number range");
         }
 
         if (request.getNumberLength() == null
                 || request.getNumberLength() < 1
                 || request.getNumberLength() > 10) {
+
             throw new RuntimeException(
                     "Number length must be between 1 and 10");
         }
     }
 
     private String buildEmployeeId(
-            String prefix, long number, int numberLength) {
-        return prefix + String.format("%0" + numberLength + "d", number);
+            String prefix,
+            long number,
+            int numberLength) {
+
+        return prefix + String.format(
+                "%0" + numberLength + "d",
+                number
+        );
     }
 
     private String cleanUpper(String value) {
