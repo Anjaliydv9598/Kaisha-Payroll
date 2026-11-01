@@ -1,3 +1,4 @@
+
 package com.kaisha.payroll.config;
 
 import org.springframework.context.annotation.Bean;
@@ -20,8 +21,15 @@ public class CorsConfig {
                 List.of(
                         "http://localhost:5173",
                         "http://localhost:5174",
+
+                        // Vercel production domain
                         "https://kaisha-payroll-ten.vercel.app",
-                        "https://kaisha-payroll-17d9a1nak-anjali-s-projects24.vercel.app"
+
+                        // Existing Vercel preview domain
+                        "https://kaisha-payroll-17d9a1nak-anjali-s-projects24.vercel.app",
+
+                        // Latest Vercel preview domain
+                        "https://kaisha-payroll-rbvfrdder-anjali-s-projects24.vercel.app"
                 )
         );
 

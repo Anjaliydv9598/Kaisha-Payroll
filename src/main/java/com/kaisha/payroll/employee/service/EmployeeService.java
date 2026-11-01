@@ -1,4 +1,3 @@
-
 package com.kaisha.payroll.employee.service;
 
 import com.kaisha.payroll.auth.service.CurrentUserService;
@@ -12,7 +11,10 @@ import com.kaisha.payroll.employee.repository.EmployeeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,7 +42,10 @@ public class EmployeeService {
         this.numberSeriesService = numberSeriesService;
     }
 
+    // ============================================================
     // GET ALL ACTIVE EMPLOYEES
+    // ============================================================
+
     @Transactional(readOnly = true)
     public List<Employee> getEmployees() {
 
@@ -51,7 +56,50 @@ public class EmployeeService {
                         companyId);
     }
 
-    // CREATE A NEW EMPLOYEE
+    // ============================================================
+    // GET EMPLOYEE RECORDS WITH THEIR FIELD VALUES
+    // ============================================================
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getEmployeeRecords() {
+
+        List<Employee> employees = getEmployees();
+
+        List<Map<String, Object>> records = new ArrayList<>();
+
+        for (Employee employee : employees) {
+
+            List<EmployeeField> fields =
+                    employeeFieldRepository
+                            .findByEmployee_IdOrderByFieldIdAsc(
+                                    employee.getId());
+
+            Map<String, Object> record = new LinkedHashMap<>();
+
+            record.put("employeeId", employee.getEmployeeId());
+            record.put("active", employee.isActive());
+            record.put("detailsCompleted", employee.isDetailsCompleted());
+
+            record.put("department", getFieldValue(fields, "Department"));
+            record.put("fullName", getFieldValue(fields, "Full Name"));
+            record.put("email", getFieldValue(fields, "Email"));
+            record.put("phone", getFieldValue(fields, "Phone"));
+            record.put("designation", getFieldValue(fields, "Designation"));
+            record.put("joiningDate", getFieldValue(fields, "Joining Date"));
+            record.put("salary", getFieldValue(fields, "Salary"));
+
+            records.add(record);
+        }
+
+        return records;
+    }
+
+    // ============================================================
+    // LEGACY CREATE EMPLOYEE METHOD
+    // Kept to avoid removing the existing service method.
+    // The new Employee Data Create screen will use reserveEmployeeId.
+    // ============================================================
+
     @Transactional
     public Employee createEmployee(String department) {
 
@@ -67,7 +115,6 @@ public class EmployeeService {
                 .orElseThrow(() ->
                         new RuntimeException("Company not found"));
 
-        // Generate the next ID from the configured number series.
         String employeeId =
                 numberSeriesService.generateNextEmployeeId(cleanDepartment);
 
@@ -78,7 +125,6 @@ public class EmployeeService {
 
         Employee savedEmployee = employeeRepository.save(employee);
 
-        // Save department as an employee field.
         EmployeeField departmentField = new EmployeeField();
         departmentField.setEmployee(savedEmployee);
         departmentField.setFieldName("Department");
@@ -89,7 +135,57 @@ public class EmployeeService {
         return savedEmployee;
     }
 
+    // ============================================================
+    // RESERVE AN EXISTING EMPLOYEE ID
+    // Does not create a new Employee row or generate a new ID.
+    // ============================================================
+
+    @Transactional(readOnly = true)
+    public Employee reserveEmployeeId(String department) {
+
+        if (department == null || department.trim().isEmpty()) {
+            throw new RuntimeException("Please select a department");
+        }
+
+        String companyId = currentUserService.getCurrentCompanyId();
+        String selectedDepartment = department.trim();
+
+        List<Employee> pendingEmployees =
+                employeeRepository
+                        .findByCompany_CompanyIdAndDetailsCompletedFalseOrderByEmployeeIdAsc(
+                                companyId);
+
+        for (Employee employee : pendingEmployees) {
+
+            if (!employee.isActive()) {
+                continue;
+            }
+
+            List<EmployeeField> fields =
+                    employeeFieldRepository
+                            .findByEmployee_IdOrderByFieldIdAsc(
+                                    employee.getId());
+
+            String existingDepartment =
+                    getFieldValue(fields, "Department");
+
+            if (existingDepartment != null
+                    && existingDepartment.trim()
+                    .equalsIgnoreCase(selectedDepartment)) {
+
+                return employee;
+            }
+        }
+
+        throw new RuntimeException(
+                "No reserved Employee IDs are available for department: "
+                        + selectedDepartment);
+    }
+
+    // ============================================================
     // GET ONE EMPLOYEE FOR THE CURRENT COMPANY
+    // ============================================================
+
     @Transactional(readOnly = true)
     public Employee getEmployeeForCompany(String employeeId) {
 
@@ -102,7 +198,10 @@ public class EmployeeService {
                         new RuntimeException("Employee not found"));
     }
 
+    // ============================================================
     // GET EMPLOYEE FIELDS
+    // ============================================================
+
     @Transactional(readOnly = true)
     public List<EmployeeField> getEmployeeFields(String employeeId) {
 
@@ -112,7 +211,10 @@ public class EmployeeService {
                 .findByEmployee_IdOrderByFieldIdAsc(employee.getId());
     }
 
+    // ============================================================
     // ADMIN: ADD FIELD
+    // ============================================================
+
     @Transactional
     public EmployeeField addField(
             String employeeId,
@@ -132,7 +234,10 @@ public class EmployeeService {
         return employeeFieldRepository.save(field);
     }
 
+    // ============================================================
     // ADMIN: UPDATE FIELD
+    // ============================================================
+
     @Transactional
     public EmployeeField updateField(
             String employeeId,
@@ -149,8 +254,7 @@ public class EmployeeService {
 
         validateFieldName(fieldName);
         validateFieldValue(fieldName, fieldValue);
-        validateNoDuplicateField(
-                employee, fieldName, fieldId);
+        validateNoDuplicateField(employee, fieldName, fieldId);
 
         field.setFieldName(fieldName.trim());
         field.setFieldValue(fieldValue.trim());
@@ -158,7 +262,10 @@ public class EmployeeService {
         return employeeFieldRepository.save(field);
     }
 
+    // ============================================================
     // ADMIN: DELETE FIELD
+    // ============================================================
+
     @Transactional
     public void deleteField(String employeeId, Long fieldId) {
 
@@ -172,7 +279,10 @@ public class EmployeeService {
         employeeFieldRepository.delete(field);
     }
 
+    // ============================================================
     // APPROVAL: ADD FIELD
+    // ============================================================
+
     @Transactional
     public EmployeeField addFieldForApproval(
             Employee employee,
@@ -190,7 +300,10 @@ public class EmployeeService {
         return employeeFieldRepository.save(field);
     }
 
+    // ============================================================
     // APPROVAL: UPDATE FIELD
+    // ============================================================
+
     @Transactional
     public EmployeeField updateFieldForApproval(
             Employee employee,
@@ -213,7 +326,10 @@ public class EmployeeService {
         return employeeFieldRepository.save(field);
     }
 
+    // ============================================================
     // APPROVAL: DELETE FIELD
+    // ============================================================
+
     @Transactional
     public void deleteFieldForApproval(
             Employee employee,
@@ -227,8 +343,10 @@ public class EmployeeService {
         employeeFieldRepository.delete(field);
     }
 
+    // ============================================================
     // CHANGE EMPLOYEE ID PREFIX
-    // Example: HR001 -> STAFF001
+    // ============================================================
+
     @Transactional
     public Employee updateEmployeePrefix(
             String employeeId,
@@ -239,7 +357,10 @@ public class EmployeeService {
         return updateEmployeePrefixForApproval(employee, newPrefix);
     }
 
+    // ============================================================
     // CHANGE PREFIX FOR APPROVAL
+    // ============================================================
+
     @Transactional
     public Employee updateEmployeePrefixForApproval(
             Employee employee,
@@ -268,65 +389,199 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    // ============================================================
     // COMPLETE A RESERVED EMPLOYEE
-    // Updates an existing reserved row; does not create another employee.
+    // Updates the existing reserved Employee row.
+    // ============================================================
+
     @Transactional
     public Employee completeReservedEmployee(
             String employeeId,
-            Map<String, String> details) {
+            Map<String, Object> details) {
 
-        String companyId = currentUserService.getCurrentCompanyId();
-
-        Employee employee = employeeRepository
-                .findByEmployeeIdAndCompany_CompanyId(
-                        employeeId, companyId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Reserved employee ID not found"));
+        Employee employee = getEmployeeForCompany(employeeId);
 
         if (employee.isDetailsCompleted()) {
             throw new RuntimeException(
                     "Employee details have already been completed");
         }
 
-        if (details == null || details.isEmpty()) {
-            throw new RuntimeException("Employee details are required");
-        }
-
-        for (Map.Entry<String, String> entry : details.entrySet()) {
-
-            String fieldName = entry.getKey() == null
-                    ? "" : entry.getKey().trim();
-
-            String fieldValue = entry.getValue();
-
-            if (fieldName.isEmpty()) {
-                throw new RuntimeException("Field name is required");
-            }
-
-            if ("department".equalsIgnoreCase(fieldName)) {
-                throw new RuntimeException(
-                        "Department is already assigned to this reserved ID");
-            }
-
-            validateField(employee, fieldName);
-            validateFieldValue(fieldName, fieldValue);
-
-            EmployeeField field = new EmployeeField();
-            field.setEmployee(employee);
-            field.setFieldName(fieldName);
-            field.setFieldValue(fieldValue.trim());
-
-            employeeFieldRepository.save(field);
-        }
+        saveEmployeeDetails(employee, details);
 
         employee.setDetailsCompleted(true);
 
         return employeeRepository.save(employee);
     }
 
+    // ============================================================
+    // EDIT AN EXISTING COMPLETED EMPLOYEE
+    // Employee ID and Department cannot be changed here.
+    // ============================================================
+
+    @Transactional
+    public Employee updateEmployeeDetails(
+            String employeeId,
+            Map<String, Object> details) {
+
+        Employee employee = getEmployeeForCompany(employeeId);
+
+        if (!employee.isDetailsCompleted()) {
+            throw new RuntimeException(
+                    "Complete the employee details before editing");
+        }
+
+        saveEmployeeDetails(employee, details);
+
+        return employeeRepository.save(employee);
+    }
+
+    // ============================================================
+    // SAVE OR UPDATE EMPLOYEE DETAILS
+    // ============================================================
+
+    private void saveEmployeeDetails(
+            Employee employee,
+            Map<String, Object> details) {
+
+        if (details == null || details.isEmpty()) {
+            throw new RuntimeException("Employee details are required");
+        }
+
+        Map<String, String> allowedFields = new LinkedHashMap<>();
+
+        allowedFields.put("fullname", "Full Name");
+        allowedFields.put("email", "Email");
+        allowedFields.put("phone", "Phone");
+        allowedFields.put("designation", "Designation");
+        allowedFields.put("joiningdate", "Joining Date");
+        allowedFields.put("salary", "Salary");
+
+        Map<String, String> normalizedDetails = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Object> entry : details.entrySet()) {
+
+            if (entry.getKey() == null) {
+                continue;
+            }
+
+            String key = entry.getKey()
+                    .replaceAll("[^A-Za-z]", "")
+                    .toLowerCase(Locale.ROOT);
+
+            String fieldName = allowedFields.get(key);
+
+            if (fieldName == null) {
+                throw new RuntimeException(
+                        "Unsupported employee field: " + entry.getKey()
+                                + ". Employee ID and Department cannot be changed here.");
+            }
+
+            String value = entry.getValue() == null
+                    ? ""
+                    : String.valueOf(entry.getValue()).trim();
+
+            normalizedDetails.put(fieldName, value);
+        }
+
+        // Required fields
+        validateFieldValue(
+                "Full Name", normalizedDetails.get("Full Name"));
+
+        validateFieldValue(
+                "Email", normalizedDetails.get("Email"));
+
+        validateFieldValue(
+                "Phone", normalizedDetails.get("Phone"));
+
+        // Existing fields for this employee
+        List<EmployeeField> existingFields =
+                employeeFieldRepository
+                        .findByEmployee_IdOrderByFieldIdAsc(
+                                employee.getId());
+
+        for (Map.Entry<String, String> entry
+                : normalizedDetails.entrySet()) {
+
+            String fieldName = entry.getKey();
+            String fieldValue = entry.getValue();
+
+            EmployeeField existingField = null;
+
+            for (EmployeeField field : existingFields) {
+                if (field.getFieldName() != null
+                        && field.getFieldName()
+                        .equalsIgnoreCase(fieldName)) {
+
+                    existingField = field;
+                    break;
+                }
+            }
+
+            // Optional fields can be left empty.
+            // If an existing optional value is cleared, save it as null.
+            if (fieldValue == null || fieldValue.isBlank()) {
+
+                if (existingField != null
+                        && !isRequiredField(fieldName)) {
+                    existingField.setFieldValue(null);
+                    employeeFieldRepository.save(existingField);
+                }
+
+                continue;
+            }
+
+            if (existingField != null) {
+
+                existingField.setFieldValue(fieldValue);
+                employeeFieldRepository.save(existingField);
+
+            } else {
+
+                EmployeeField newField = new EmployeeField();
+                newField.setEmployee(employee);
+                newField.setFieldName(fieldName);
+                newField.setFieldValue(fieldValue);
+
+                employeeFieldRepository.save(newField);
+            }
+        }
+    }
+
+    private boolean isRequiredField(String fieldName) {
+
+        return "Full Name".equalsIgnoreCase(fieldName)
+                || "Email".equalsIgnoreCase(fieldName)
+                || "Phone".equalsIgnoreCase(fieldName);
+    }
+
+    // ============================================================
+    // GET A FIELD VALUE BY FIELD NAME
+    // ============================================================
+
+    private String getFieldValue(
+            List<EmployeeField> fields,
+            String fieldName) {
+
+        for (EmployeeField field : fields) {
+
+            if (field.getFieldName() != null
+                    && field.getFieldName()
+                    .equalsIgnoreCase(fieldName)) {
+
+                return field.getFieldValue();
+            }
+        }
+
+        return null;
+    }
+
+    // ============================================================
     // VALIDATE FIELD NAME AND CHECK DUPLICATES
-    private void validateField(Employee employee, String fieldName) {
+    // ============================================================
+
+    private void validateField(
+            Employee employee,
+            String fieldName) {
 
         validateFieldName(fieldName);
 

@@ -1,3 +1,4 @@
+
 import React, {
     useCallback,
     useEffect,
@@ -10,24 +11,30 @@ import AdminLayout from "../pages/AdminLayout";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
+const EMPTY_DETAILS = {
+    fullName: "",
+    email: "",
+    phone: "",
+    designation: "",
+    joiningDate: "",
+    salary: "",
+};
+
 export default function EmployeeDataCreate() {
     const [employees, setEmployees] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [department, setDepartment] = useState("");
     const [employeeId, setEmployeeId] = useState("");
 
-    const [details, setDetails] = useState({
-        fullName: "",
-        email: "",
-        phone: "",
-        designation: "",
-        joiningDate: "",
-        salary: "",
-    });
+    const [details, setDetails] = useState(EMPTY_DETAILS);
+
+    const [editing, setEditing] = useState(false);
+    const [editingDepartment, setEditingDepartment] = useState("");
 
     const [loading, setLoading] = useState(false);
     const [departmentsLoading, setDepartmentsLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
@@ -78,64 +85,55 @@ export default function EmployeeDataCreate() {
     );
 
     /* ========================================================
-       LOAD DEPARTMENTS
+       LOAD ACTIVE DEPARTMENTS FROM NUMBER SERIES
        ======================================================== */
-
-    const normalizeDepartments = (result) => {
-        const list = Array.isArray(result)
-            ? result
-            : result?.content ||
-            result?.departments ||
-            result?.data ||
-            result?.items ||
-            [];
-
-        return list
-            .map((item) => {
-                if (typeof item === "string") {
-                    return {
-                        id: item,
-                        name: item,
-                    };
-                }
-
-                const name =
-                    item.departmentName ||
-                    item.department ||
-                    item.name ||
-                    item.masterDataName ||
-                    item.value ||
-                    item.title;
-
-                const id =
-                    item.departmentId ??
-                    item.id ??
-                    item.masterDataId ??
-                    name;
-
-                if (!name) {
-                    return null;
-                }
-
-                return {
-                    id: String(id),
-                    name: String(name),
-                };
-            })
-            .filter(Boolean);
-    };
 
     const loadDepartments = useCallback(async () => {
         setDepartmentsLoading(true);
 
         try {
-            const response = await request("/master-data/departments");
-            const list = normalizeDepartments(response);
+            const response = await request("/employee-number-series");
+
+            const list = Array.isArray(response)
+                ? response
+                : response?.content ||
+                response?.data ||
+                response?.items ||
+                response?.series ||
+                [];
+
+            const activeDepartments = list
+                .filter((item) => {
+                    return (
+                        item.active === true ||
+                        item.active === "true"
+                    );
+                })
+                .map((item) => {
+                    const name =
+                        item.department ||
+                        item.departmentName ||
+                        item.name;
+
+                    if (!name) {
+                        return null;
+                    }
+
+                    return {
+                        id: String(
+                            item.id ??
+                            item.seriesId ??
+                            name
+                        ),
+                        name: String(name).trim(),
+                    };
+                })
+                .filter(Boolean);
 
             const uniqueDepartments = Array.from(
                 new Map(
-                    list.map((item) => [
-                        item.name.trim().toLowerCase(),
+                    activeDepartments.map((item) => [
+                        item.name.toLowerCase(),
                         item,
                     ])
                 ).values()
@@ -143,23 +141,22 @@ export default function EmployeeDataCreate() {
 
             setDepartments(uniqueDepartments);
 
-            if (uniqueDepartments.length > 0) {
-                setDepartment((previous) => {
-                    const stillExists = uniqueDepartments.some(
-                        (item) => item.name === previous
-                    );
+            setDepartment((previous) => {
+                const exists = uniqueDepartments.some(
+                    (item) => item.name === previous
+                );
 
-                    return stillExists
-                        ? previous
-                        : uniqueDepartments[0]?.name || "";
-                });
-            } else {
-                setDepartment("");
-            }
+                return exists
+                    ? previous
+                    : uniqueDepartments[0]?.name || "";
+            });
         } catch (err) {
             setDepartments([]);
             setDepartment("");
-            setError(err.message || "Could not load departments.");
+
+            setError(
+                err.message || "Could not load active departments."
+            );
         } finally {
             setDepartmentsLoading(false);
         }
@@ -177,7 +174,10 @@ export default function EmployeeDataCreate() {
 
             const list = Array.isArray(result)
                 ? result
-                : result?.content || result?.data || [];
+                : result?.content ||
+                result?.data ||
+                result?.items ||
+                [];
 
             setEmployees(list);
         } catch (err) {
@@ -200,19 +200,13 @@ export default function EmployeeDataCreate() {
 
     const resetForm = () => {
         setEmployeeId("");
-
-        setDetails({
-            fullName: "",
-            email: "",
-            phone: "",
-            designation: "",
-            joiningDate: "",
-            salary: "",
-        });
+        setDetails({ ...EMPTY_DETAILS });
+        setEditing(false);
+        setEditingDepartment("");
     };
 
     /* ========================================================
-       RESERVE EMPLOYEE ID
+       RESERVE EXISTING EMPLOYEE ID
        ======================================================== */
 
     const handleReserve = async (event) => {
@@ -231,9 +225,7 @@ export default function EmployeeDataCreate() {
         try {
             const result = await request("/employees/reserve", {
                 method: "POST",
-                body: JSON.stringify({
-                    department,
-                }),
+                body: JSON.stringify({ department }),
             });
 
             const reservedId =
@@ -247,10 +239,17 @@ export default function EmployeeDataCreate() {
                 );
             }
 
+            setEditing(false);
+            setEditingDepartment("");
             setEmployeeId(String(reservedId));
+            setDetails({ ...EMPTY_DETAILS });
+
+            if (result?.department) {
+                setDepartment(result.department);
+            }
 
             setMessage(
-                `Employee ID ${reservedId} reserved successfully.`
+                `Existing Employee ID ${reservedId} reserved successfully.`
             );
 
             await loadEmployees();
@@ -264,7 +263,7 @@ export default function EmployeeDataCreate() {
     };
 
     /* ========================================================
-       UPDATE FORM FIELDS
+       FORM FIELD CHANGES
        ======================================================== */
 
     const handleDetailChange = (event) => {
@@ -277,7 +276,44 @@ export default function EmployeeDataCreate() {
     };
 
     /* ========================================================
-       COMPLETE EMPLOYEE DETAILS
+       VALIDATE AND BUILD EMPLOYEE PAYLOAD
+       ======================================================== */
+
+    const buildPayload = () => {
+        if (!details.fullName.trim()) {
+            throw new Error("Please enter the employee's full name.");
+        }
+
+        if (!details.email.trim()) {
+            throw new Error("Please enter the employee's email.");
+        }
+
+        if (!details.phone.trim()) {
+            throw new Error("Please enter the employee's phone number.");
+        }
+
+        if (
+            details.salary.trim() &&
+            (!Number.isFinite(Number(details.salary)) ||
+                Number(details.salary) < 0)
+        ) {
+            throw new Error("Please enter a valid salary.");
+        }
+
+        return {
+            fullName: details.fullName.trim(),
+            email: details.email.trim(),
+            phone: details.phone.trim(),
+            designation: details.designation.trim(),
+            joiningDate: details.joiningDate || null,
+            salary: details.salary.trim()
+                ? Number(details.salary)
+                : null,
+        };
+    };
+
+    /* ========================================================
+       SAVE NEW EMPLOYEE DETAILS
        ======================================================== */
 
     const handleComplete = async (event) => {
@@ -291,31 +327,19 @@ export default function EmployeeDataCreate() {
             return;
         }
 
-        if (!details.fullName.trim()) {
-            setError("Please enter the employee's full name.");
+        if (editing) {
+            setError("Please finish or cancel the current edit first.");
             return;
         }
 
-        if (!details.email.trim()) {
-            setError("Please enter the employee's email.");
+        let payload;
+
+        try {
+            payload = buildPayload();
+        } catch (err) {
+            setError(err.message);
             return;
         }
-
-        if (!details.phone.trim()) {
-            setError("Please enter the employee's phone number.");
-            return;
-        }
-
-        const payload = {
-            fullName: details.fullName.trim(),
-            email: details.email.trim(),
-            phone: details.phone.trim(),
-            designation: details.designation.trim(),
-            joiningDate: details.joiningDate || null,
-            salary: details.salary
-                ? Number(details.salary)
-                : null,
-        };
 
         setSaving(true);
 
@@ -333,7 +357,6 @@ export default function EmployeeDataCreate() {
             );
 
             resetForm();
-
             await loadEmployees();
         } catch (err) {
             setError(
@@ -353,30 +376,159 @@ export default function EmployeeDataCreate() {
         employee.detailsCompleted === "true";
 
     /* ========================================================
+       GET DEPARTMENT NAME
+       ======================================================== */
+
+    const getDepartment = (employee) => {
+        const value =
+            employee.departmentName ||
+            employee.department?.departmentName ||
+            employee.department?.name ||
+            employee.department ||
+            "—";
+
+        return typeof value === "object"
+            ? value.name || "—"
+            : value;
+    };
+
+    /* ========================================================
+       EDIT EXISTING EMPLOYEE
+       ======================================================== */
+
+    const handleEdit = (employee) => {
+        setError("");
+        setMessage("");
+
+        if (!isCompleted(employee)) {
+            setError("Complete the employee details before editing.");
+            return;
+        }
+
+        const id =
+            employee.employeeId ??
+            employee.empId;
+
+        if (!id) {
+            setError("Employee ID is missing.");
+            return;
+        }
+
+        const recordDepartment = getDepartment(employee);
+
+        setEmployeeId(String(id));
+        setDepartment(recordDepartment);
+        setEditingDepartment(recordDepartment);
+
+        setDetails({
+            fullName: employee.fullName || "",
+            email: employee.email || "",
+            phone: employee.phone || "",
+            designation: employee.designation || "",
+            joiningDate: employee.joiningDate
+                ? String(employee.joiningDate).substring(0, 10)
+                : "",
+            salary:
+                employee.salary !== null &&
+                employee.salary !== undefined
+                    ? String(employee.salary)
+                    : "",
+        });
+
+        setEditing(true);
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+    };
+
+    /* ========================================================
+       UPDATE EXISTING EMPLOYEE DETAILS
+       ======================================================== */
+
+    const handleUpdate = async (event) => {
+        event.preventDefault();
+
+        setError("");
+        setMessage("");
+
+        if (!employeeId || !editing) {
+            setError("Select an employee to edit first.");
+            return;
+        }
+
+        let payload;
+
+        try {
+            payload = buildPayload();
+        } catch (err) {
+            setError(err.message);
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await request(
+                `/employees/${encodeURIComponent(employeeId)}/details`,
+                {
+                    method: "PUT",
+                    body: JSON.stringify(payload),
+                }
+            );
+
+            setMessage(
+                `Employee ${employeeId} updated successfully.`
+            );
+
+            resetForm();
+            await loadEmployees();
+        } catch (err) {
+            setError(
+                err.message || "Could not update employee details."
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    /* ========================================================
+       REFRESH
+       ======================================================== */
+
+    const handleRefresh = () => {
+        setError("");
+        setMessage("");
+
+        loadDepartments();
+        loadEmployees();
+    };
+
+    /* ========================================================
        RENDER
        ======================================================== */
 
     return (
         <AdminLayout>
             <div className="employee-create-page">
+
+                {/* PAGE HEADER */}
+
                 <div className="employee-create-header">
                     <div>
                         <h1>Employee Data Create</h1>
 
                         <p>
-                            Reserve an employee ID, then complete
-                            the employee's information.
+                            Reserve an existing employee ID and
+                            complete or update employee information.
                         </p>
                     </div>
 
                     <button
                         type="button"
                         className="employee-refresh-btn"
-                        onClick={() => {
-                            setError("");
-                            loadDepartments();
-                            loadEmployees();
-                        }}
+                        onClick={handleRefresh}
                         disabled={loading || departmentsLoading}
                     >
                         {loading || departmentsLoading
@@ -384,6 +536,8 @@ export default function EmployeeDataCreate() {
                             : "Refresh"}
                     </button>
                 </div>
+
+                {/* ALERTS */}
 
                 {error && (
                     <div
@@ -410,6 +564,7 @@ export default function EmployeeDataCreate() {
 
                     <form onSubmit={handleReserve}>
                         <div className="employee-form-grid">
+
                             <div className="employee-form-group">
                                 <label htmlFor="department">
                                     Department *
@@ -421,11 +576,15 @@ export default function EmployeeDataCreate() {
                                     onChange={(event) => {
                                         setDepartment(event.target.value);
                                         setEmployeeId("");
+                                        setDetails({ ...EMPTY_DETAILS });
+                                        setEditing(false);
+                                        setEditingDepartment("");
                                         setMessage("");
                                     }}
                                     disabled={
                                         departmentsLoading ||
                                         saving ||
+                                        editing ||
                                         departments.length === 0
                                     }
                                     required
@@ -434,7 +593,7 @@ export default function EmployeeDataCreate() {
                                         {departmentsLoading
                                             ? "Loading departments..."
                                             : departments.length === 0
-                                                ? "No departments available"
+                                                ? "No active departments available"
                                                 : "Select department"}
                                     </option>
 
@@ -449,13 +608,16 @@ export default function EmployeeDataCreate() {
                                 </select>
 
                                 <small>
-                                    Departments are loaded from your backend.
+                                    Only departments with active number
+                                    series are displayed.
                                 </small>
                             </div>
 
                             <div className="employee-form-group">
                                 <label htmlFor="reservedEmployeeId">
-                                    Reserved Employee ID
+                                    {editing
+                                        ? "Employee ID (Editing)"
+                                        : "Reserved Employee ID"}
                                 </label>
 
                                 <input
@@ -466,35 +628,61 @@ export default function EmployeeDataCreate() {
                                 />
 
                                 <small>
-                                    Select a department and reserve an ID
-                                    before entering employee details.
+                                    {editing
+                                        ? "Employee ID cannot be changed while editing."
+                                        : "Reserve an existing ID before entering employee details."}
                                 </small>
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            className="employee-primary-btn"
-                            disabled={
-                                saving ||
-                                departmentsLoading ||
-                                !department
-                            }
-                        >
-                            {saving
-                                ? "Reserving..."
-                                : "Reserve Employee ID"}
-                        </button>
+                        {!editing && (
+                            <button
+                                type="submit"
+                                className="employee-primary-btn"
+                                disabled={
+                                    saving ||
+                                    departmentsLoading ||
+                                    !department
+                                }
+                            >
+                                {saving
+                                    ? "Reserving..."
+                                    : "Reserve Employee ID"}
+                            </button>
+                        )}
+
+                        {editing && (
+                            <p className="employee-form-hint">
+                                You are editing an existing employee.
+                                Reserving another ID is disabled.
+                            </p>
+                        )}
                     </form>
                 </section>
 
-                {/* EMPLOYEE DETAILS */}
+                {/* EMPLOYEE DETAILS FORM */}
 
                 <section className="employee-create-card">
-                    <h2>2. Complete Employee Details</h2>
+                    <h2>
+                        {editing
+                            ? "2. Edit Employee Details"
+                            : "2. Complete Employee Details"}
+                    </h2>
 
-                    <form onSubmit={handleComplete}>
+                    {editing && (
+                        <div className="employee-edit-info">
+                            <strong>Editing Employee:</strong> {employeeId}
+                            <span>
+                                Department: {editingDepartment}
+                            </span>
+                        </div>
+                    )}
+
+                    <form
+                        onSubmit={editing ? handleUpdate : handleComplete}
+                    >
                         <div className="employee-form-grid">
+
                             <div className="employee-form-group">
                                 <label htmlFor="fullName">
                                     Full Name *
@@ -585,13 +773,14 @@ export default function EmployeeDataCreate() {
                         </div>
 
                         <div className="employee-form-actions">
+
                             <button
                                 type="button"
                                 className="employee-secondary-btn"
                                 onClick={resetForm}
                                 disabled={saving}
                             >
-                                Clear
+                                {editing ? "Cancel Edit" : "Clear"}
                             </button>
 
                             <button
@@ -600,8 +789,12 @@ export default function EmployeeDataCreate() {
                                 disabled={saving || !employeeId}
                             >
                                 {saving
-                                    ? "Saving..."
-                                    : "Save Employee Details"}
+                                    ? editing
+                                        ? "Updating..."
+                                        : "Saving..."
+                                    : editing
+                                        ? "Update Employee"
+                                        : "Save Employee Details"}
                             </button>
                         </div>
 
@@ -613,15 +806,16 @@ export default function EmployeeDataCreate() {
                     </form>
                 </section>
 
-                {/* EMPLOYEE RECORDS */}
+                {/* EMPLOYEE RECORDS TABLE */}
 
                 <section className="employee-create-card">
+
                     <div className="employee-table-header">
                         <div>
                             <h2>Employee Records</h2>
 
                             <p>
-                                Review reserved and completed employee records.
+                                Review, edit and manage employee information.
                             </p>
                         </div>
 
@@ -641,11 +835,17 @@ export default function EmployeeDataCreate() {
                     ) : (
                         <div className="employee-table-wrapper">
                             <table className="employee-table">
+
                                 <thead>
                                 <tr>
                                     <th>Employee ID</th>
                                     <th>Department</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Designation</th>
                                     <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                                 </thead>
 
@@ -657,37 +857,64 @@ export default function EmployeeDataCreate() {
                                         employee.id ??
                                         `record-${index}`;
 
-                                    const employeeDepartment =
-                                        employee.departmentName ||
-                                        employee.department?.departmentName ||
-                                        employee.department?.name ||
-                                        employee.department ||
-                                        "—";
+                                    const completed =
+                                        isCompleted(employee);
 
                                     return (
                                         <tr key={id}>
                                             <td>{id}</td>
 
                                             <td>
-                                                {typeof employeeDepartment ===
-                                                "object"
-                                                    ? employeeDepartment.name ||
-                                                    "—"
-                                                    : employeeDepartment}
+                                                {getDepartment(employee)}
+                                            </td>
+
+                                            <td>
+                                                {employee.fullName || "—"}
+                                            </td>
+
+                                            <td>
+                                                {employee.email || "—"}
+                                            </td>
+
+                                            <td>
+                                                {employee.phone || "—"}
+                                            </td>
+
+                                            <td>
+                                                {employee.designation || "—"}
                                             </td>
 
                                             <td>
                                                     <span
                                                         className={
-                                                            isCompleted(employee)
+                                                            completed
                                                                 ? "employee-status employee-status-complete"
                                                                 : "employee-status employee-status-pending"
                                                         }
                                                     >
-                                                        {isCompleted(employee)
+                                                        {completed
                                                             ? "Completed"
                                                             : "Pending details"}
                                                     </span>
+                                            </td>
+
+                                            <td>
+                                                {completed ? (
+                                                    <button
+                                                        type="button"
+                                                        className="employee-edit-btn"
+                                                        onClick={() =>
+                                                            handleEdit(employee)
+                                                        }
+                                                        disabled={saving}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                ) : (
+                                                    <span className="employee-action-unavailable">
+                                                            Not available
+                                                        </span>
+                                                )}
                                             </td>
                                         </tr>
                                     );

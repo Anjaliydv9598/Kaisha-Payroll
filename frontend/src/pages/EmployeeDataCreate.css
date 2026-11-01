@@ -496,3 +496,57 @@
         padding-left: 12px;
     }
 }
+
+
+/* ============================================================
+   EDIT EMPLOYEE
+   ============================================================ */
+
+.employee-edit-btn {
+    min-height: 32px;
+    padding: 0 13px;
+    border: 1px solid #d5e0fa;
+    border-radius: 6px;
+    background: #f2f5ff;
+    color: #3157c8;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.employee-edit-btn:hover:not(:disabled) {
+    background: #e4ebff;
+}
+
+.employee-edit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.employee-action-unavailable {
+    color: #9a6a17;
+    font-size: 11px;
+}
+
+.employee-edit-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    border: 1px solid #dfe6f8;
+    border-radius: 7px;
+    background: #f5f7ff;
+    color: #354052;
+    font-size: 12px;
+}
+
+.employee-edit-info strong {
+    color: #3157c8;
+}
+
+.employee-table {
+    min-width: 1050px;
+}
