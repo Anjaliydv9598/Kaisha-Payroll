@@ -20,14 +20,12 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
-    public EmployeeController(
-            EmployeeService employeeService
-    ) {
+    public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
 
     // ============================================================
-    // GET ALL EMPLOYEES
+    // GET ALL EMPLOYEE RECORDS
     // ADMIN + STAFF
     // ============================================================
 
@@ -35,84 +33,116 @@ public class EmployeeController {
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<?> getEmployees() {
 
-        List<Employee> employees =
-                employeeService.getEmployees();
-
-        List<Map<String, Object>> response =
-                employees.stream()
-                        .map(employee -> {
-
-                            Map<String, Object> map =
-                                    new HashMap<>();
-
-                            map.put(
-                                    "employeeId",
-                                    employee.getEmployeeId()
-                            );
-
-                            map.put(
-                                    "active",
-                                    employee.isActive()
-                            );
-
-                            return map;
-                        })
-                        .toList();
-
         return ResponseEntity.ok(
-                response
+                employeeService.getEmployeeRecords()
         );
     }
 
     // ============================================================
-    // CREATE EMPLOYEE
+    // RESERVE AN EXISTING EMPLOYEE ID
     // ADMIN ONLY
     //
     // Request:
-    //
     // {
     //     "department": "HR"
     // }
+    // ============================================================
+
+    @PostMapping("/reserve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> reserveEmployeeId(
+            @RequestBody Map<String, String> body) {
+
+        Employee employee =
+                employeeService.reserveEmployeeId(
+                        body.get("department")
+                );
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("message", "Reserved Employee ID retrieved successfully");
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("department", body.get("department"));
+        response.put("detailsCompleted", employee.isDetailsCompleted());
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ============================================================
+    // COMPLETE RESERVED EMPLOYEE
+    // ADMIN ONLY
     //
-    // Response:
+    // PUT /api/employees/{employeeId}/complete
+    // ============================================================
+
+    @PutMapping("/{employeeId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> completeReservedEmployee(
+            @PathVariable String employeeId,
+            @RequestBody Map<String, Object> details) {
+
+        Employee employee =
+                employeeService.completeReservedEmployee(
+                        employeeId, details
+                );
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("message", "Employee details saved successfully");
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("detailsCompleted", employee.isDetailsCompleted());
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ============================================================
+    // EDIT EXISTING EMPLOYEE DETAILS
+    // ADMIN ONLY
     //
-    // {
-    //     "message": "Employee created successfully",
-    //     "employeeId": "HR001"
-    // }
+    // PUT /api/employees/{employeeId}/details
+    // ============================================================
+
+    @PutMapping("/{employeeId}/details")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateEmployeeDetails(
+            @PathVariable String employeeId,
+            @RequestBody Map<String, Object> details) {
+
+        Employee employee =
+                employeeService.updateEmployeeDetails(
+                        employeeId, details
+                );
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("message", "Employee details updated successfully");
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("detailsCompleted", employee.isDetailsCompleted());
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ============================================================
+    // LEGACY CREATE EMPLOYEE ENDPOINT
+    // Kept for compatibility with existing callers.
+    // The new Employee Data Create screen should use /reserve.
     // ============================================================
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createEmployee(
-            @RequestBody Map<String, String> body
-    ) {
+            @RequestBody Map<String, String> body) {
 
-        String department =
-                body.get("department");
+        String department = body.get("department");
 
         Employee employee =
-                employeeService.createEmployee(
-                        department
-                );
+                employeeService.createEmployee(department);
 
-        Map<String, Object> response =
-                new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
 
-        response.put(
-                "message",
-                "Employee created successfully"
-        );
-
-        response.put(
-                "employeeId",
-                employee.getEmployeeId()
-        );
-
-        response.put(
-                "department",
-                department
-        );
+        response.put("message", "Employee created successfully");
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("department", department);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -127,13 +157,10 @@ public class EmployeeController {
     @GetMapping("/{employeeId}/fields")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<?> getEmployeeFields(
-            @PathVariable String employeeId
-    ) {
+            @PathVariable String employeeId) {
 
         return ResponseEntity.ok(
-                employeeService.getEmployeeFields(
-                        employeeId
-                )
+                employeeService.getEmployeeFields(employeeId)
         );
     }
 
@@ -146,8 +173,7 @@ public class EmployeeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> addField(
             @PathVariable String employeeId,
-            @RequestBody Map<String, String> body
-    ) {
+            @RequestBody Map<String, String> body) {
 
         EmployeeField field =
                 employeeService.addField(
@@ -171,8 +197,7 @@ public class EmployeeController {
     public ResponseEntity<?> updateField(
             @PathVariable String employeeId,
             @PathVariable Long fieldId,
-            @RequestBody Map<String, String> body
-    ) {
+            @RequestBody Map<String, String> body) {
 
         EmployeeField field =
                 employeeService.updateField(
@@ -182,9 +207,7 @@ public class EmployeeController {
                         body.get("fieldValue")
                 );
 
-        return ResponseEntity.ok(
-                field
-        );
+        return ResponseEntity.ok(field);
     }
 
     // ============================================================
@@ -196,44 +219,30 @@ public class EmployeeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteField(
             @PathVariable String employeeId,
-            @PathVariable Long fieldId
-    ) {
+            @PathVariable Long fieldId) {
 
-        employeeService.deleteField(
-                employeeId,
-                fieldId
-        );
+        employeeService.deleteField(employeeId, fieldId);
 
-        Map<String, String> response =
-                new HashMap<>();
+        Map<String, String> response = new HashMap<>();
 
         response.put(
                 "message",
                 "Employee field deleted successfully"
         );
 
-        return ResponseEntity.ok(
-                response
-        );
+        return ResponseEntity.ok(response);
     }
 
     // ============================================================
     // UPDATE EMPLOYEE PREFIX
     // ADMIN ONLY
-    //
-    // Example:
-    //
-    // HR001
-    //     ↓
-    // STAFF001
     // ============================================================
 
     @PutMapping("/{employeeId}/prefix")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateEmployeePrefix(
             @PathVariable String employeeId,
-            @RequestBody EmployeePrefixRequest request
-    ) {
+            @RequestBody EmployeePrefixRequest request) {
 
         Employee employee =
                 employeeService.updateEmployeePrefix(
@@ -241,8 +250,7 @@ public class EmployeeController {
                         request.getPrefix()
                 );
 
-        Map<String, String> response =
-                new HashMap<>();
+        Map<String, String> response = new HashMap<>();
 
         response.put(
                 "message",
@@ -254,8 +262,6 @@ public class EmployeeController {
                 employee.getEmployeeId()
         );
 
-        return ResponseEntity.ok(
-                response
-        );
+        return ResponseEntity.ok(response);
     }
 }
