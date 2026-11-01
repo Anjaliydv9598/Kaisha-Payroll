@@ -1,18 +1,18 @@
 package com.kaisha.payroll.masterdata.dto;
 
 import com.kaisha.payroll.department.entity.Department;
-import com.kaisha.payroll.employee.numberseries.entity.EmployeeNumberSeries;
+import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesResponse;
 
 import java.util.List;
 
 public class MasterDataResponse {
 
     private List<Department> departments;
-    private List<EmployeeNumberSeries> numberSeries;
+    private List<NumberSeriesResponse> numberSeries;
 
     public MasterDataResponse() {}
 
-    public MasterDataResponse(List<Department> departments, List<EmployeeNumberSeries> numberSeries) {
+    public MasterDataResponse(List<Department> departments, List<NumberSeriesResponse> numberSeries) {
         this.departments = departments;
         this.numberSeries = numberSeries;
     }
@@ -25,11 +25,11 @@ public class MasterDataResponse {
         this.departments = departments;
     }
 
-    public List<EmployeeNumberSeries> getNumberSeries() {
+    public List<NumberSeriesResponse> getNumberSeries() {
         return numberSeries;
     }
 
-    public void setNumberSeries(List<EmployeeNumberSeries> numberSeries) {
+    public void setNumberSeries(List<NumberSeriesResponse> numberSeries) {
         this.numberSeries = numberSeries;
     }
 }
