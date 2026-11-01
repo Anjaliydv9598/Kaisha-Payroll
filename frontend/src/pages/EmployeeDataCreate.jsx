@@ -78,7 +78,7 @@ export default function EmployeeDataCreate() {
     );
 
     /* ========================================================
-       LOAD DEPARTMENTS FROM MASTER DATA
+       LOAD DEPARTMENTS
        ======================================================== */
 
     const normalizeDepartments = (result) => {
@@ -129,56 +129,12 @@ export default function EmployeeDataCreate() {
         setDepartmentsLoading(true);
 
         try {
-            /*
-             * Try common endpoint names.
-             * Replace this list with your actual Master Data endpoint
-             * when you confirm the route in your backend controller.
-             */
-            const endpoints = [
-                "/departments",
-                "/master-data/departments",
-                "/masterdata/departments",
-                "/master-data",
-            ];
-
-            let result = null;
-            let loaded = false;
-            let lastError = null;
-
-            for (const endpoint of endpoints) {
-                try {
-                    const response = await request(endpoint);
-                    const list = normalizeDepartments(response);
-
-                    if (list.length > 0) {
-                        result = list;
-                        loaded = true;
-                        break;
-                    }
-                } catch (err) {
-                    lastError = err;
-                }
-            }
-
-            if (!loaded) {
-                setDepartments([]);
-                setDepartment("");
-
-                if (lastError) {
-                    throw new Error(
-                        "Could not load departments from Master Data. " +
-                        "Check the department API endpoint in your backend."
-                    );
-                }
-
-                throw new Error(
-                    "No departments were returned. Add departments in Master Data or check the API response."
-                );
-            }
+            const response = await request("/departments");
+            const list = normalizeDepartments(response);
 
             const uniqueDepartments = Array.from(
                 new Map(
-                    result.map((item) => [
+                    list.map((item) => [
                         item.name.trim().toLowerCase(),
                         item,
                     ])
@@ -187,15 +143,19 @@ export default function EmployeeDataCreate() {
 
             setDepartments(uniqueDepartments);
 
-            setDepartment((previous) => {
-                const stillExists = uniqueDepartments.some(
-                    (item) => item.name === previous
-                );
+            if (uniqueDepartments.length > 0) {
+                setDepartment((previous) => {
+                    const stillExists = uniqueDepartments.some(
+                        (item) => item.name === previous
+                    );
 
-                return stillExists
-                    ? previous
-                    : uniqueDepartments[0]?.name || "";
-            });
+                    return stillExists
+                        ? previous
+                        : uniqueDepartments[0]?.name || "";
+                });
+            } else {
+                setDepartment("");
+            }
         } catch (err) {
             setDepartments([]);
             setDepartment("");
@@ -262,7 +222,7 @@ export default function EmployeeDataCreate() {
         setMessage("");
 
         if (!department) {
-            setError("Please select a department from Master Data.");
+            setError("Please select a department.");
             return;
         }
 
@@ -489,7 +449,7 @@ export default function EmployeeDataCreate() {
                                 </select>
 
                                 <small>
-                                    Departments are loaded from Master Data.
+                                    Departments are loaded from your backend.
                                 </small>
                             </div>
 
