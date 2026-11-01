@@ -2,7 +2,7 @@ package com.kaisha.payroll.masterdata.controller;
 
 import com.kaisha.payroll.department.entity.Department;
 import com.kaisha.payroll.department.service.DepartmentService;
-import com.kaisha.payroll.employee.numberseries.entity.EmployeeNumberSeries;
+import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesResponse;
 import com.kaisha.payroll.employee.numberseries.service.EmployeeNumberSeriesService;
 import com.kaisha.payroll.masterdata.dto.MasterDataResponse;
 import org.springframework.http.ResponseEntity;
@@ -42,13 +42,13 @@ public class MasterDataController {
         }
     }
 
-    // Handles: GET /api/master-data (returns both departments & series)
+    // Handles: GET /api/master-data
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<?> getMasterData() {
         try {
             List<Department> departments = departmentService.getDepartments();
-            List<EmployeeNumberSeries> series = numberSeriesService.getAllSeries();
+            List<NumberSeriesResponse> series = numberSeriesService.getAllSeries();
 
             return ResponseEntity.ok(new MasterDataResponse(departments, series));
         } catch (RuntimeException e) {
