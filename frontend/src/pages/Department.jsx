@@ -20,6 +20,19 @@ function Department() {
         useState(null);
 
     // =========================================================
+    // DEPARTMENT WEEKLY OFF STATE
+    // =========================================================
+
+    const WEEK_DAYS = [
+        "MONDAY", "TUESDAY", "WEDNESDAY",
+        "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
+    ];
+    const [weeklyOffs, setWeeklyOffs] = useState(["SATURDAY", "SUNDAY"]);
+    const [weeklyOffsLoading, setWeeklyOffsLoading] = useState(false);
+    const [weeklyOffsSaving, setWeeklyOffsSaving] = useState(false);
+    const [showWeeklyOffEditor, setShowWeeklyOffEditor] = useState(false);
+
+    // =========================================================
     // POSITION STATE
     // =========================================================
 
@@ -196,6 +209,74 @@ function Department() {
     };
 
     // =========================================================
+    // LOAD DEPARTMENT WEEKLY OFFS
+    // =========================================================
+
+    const loadWeeklyOffs = async (department) => {
+        if (!department) {
+            setWeeklyOffs(["SATURDAY", "SUNDAY"]);
+            return;
+        }
+        try {
+            setWeeklyOffsLoading(true);
+            const response = await fetch(
+                `${API_BASE}/departments/${department.departmentId}/weekly-offs`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(typeof data === "string" ? data : "Failed to load weekly offs.");
+            }
+            setWeeklyOffs(Array.isArray(data) ? data : ["SATURDAY", "SUNDAY"]);
+        } catch (err) {
+            console.error("Load weekly offs error:", err);
+            setError(err.message || "Failed to load weekly offs.");
+        } finally {
+            setWeeklyOffsLoading(false);
+        }
+    };
+
+    const toggleWeeklyOff = (day) => {
+        setWeeklyOffs((current) =>
+            current.includes(day)
+                ? current.filter((item) => item !== day)
+                : [...current, day]
+        );
+    };
+
+    const saveWeeklyOffs = async () => {
+        if (!selectedDepartment) return;
+        try {
+            setWeeklyOffsSaving(true);
+            setError("");
+            setSuccessMessage("");
+            const response = await fetch(
+                `${API_BASE}/departments/${selectedDepartment.departmentId}/weekly-offs`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ days: weeklyOffs }),
+                }
+            );
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(typeof data === "string" ? data : "Failed to save weekly offs.");
+            }
+            setWeeklyOffs(Array.isArray(data) ? data : weeklyOffs);
+            setSuccessMessage("Department weekly offs saved successfully.");
+            setShowWeeklyOffEditor(false);
+        } catch (err) {
+            console.error("Save weekly offs error:", err);
+            setError(err.message || "Failed to save weekly offs.");
+        } finally {
+            setWeeklyOffsSaving(false);
+        }
+    };
+
+    // =========================================================
     // LOAD ADMIN REQUESTS
     // =========================================================
 
@@ -272,6 +353,8 @@ function Department() {
         setError("");
 
         await loadPositions(department);
+        await loadWeeklyOffs(department);
+        setShowWeeklyOffEditor(false);
     };
 
     // =========================================================
@@ -1074,305 +1157,305 @@ function Department() {
 
     return (
         <AdminLayout>
-        <div className="department-page">
+            <div className="department-page">
 
-            {/* ================================================= */}
-            {/* HEADER */}
-            {/* ================================================= */}
+                {/* ================================================= */}
+                {/* HEADER */}
+                {/* ================================================= */}
 
-            <div className="department-header">
+                <div className="department-header">
 
-                <div>
-                    <h1>Department</h1>
+                    <div>
+                        <h1>Department</h1>
 
-                    <p>
-                        Manage departments and positions
-                    </p>
+                        <p>
+                            Manage departments and positions
+                        </p>
+                    </div>
+
+                    {/* ADMIN */}
+
+                    {isAdmin && (
+                        <button
+                            className="department-add-btn"
+                            onClick={
+                                openAddDepartment
+                            }
+                        >
+                            + Add Department
+                        </button>
+                    )}
+
+                    {/* STAFF */}
+
+                    {isStaff && (
+                        <button
+                            className="department-request-btn"
+                            onClick={() =>
+                                openRequestModal(
+                                    "ADD_DEPARTMENT"
+                                )
+                            }
+                        >
+                            + Request Department
+                        </button>
+                    )}
+
                 </div>
 
-                {/* ADMIN */}
+                {/* ================================================= */}
+                {/* ERROR */}
+                {/* ================================================= */}
 
-                {isAdmin && (
-                    <button
-                        className="department-add-btn"
-                        onClick={
-                            openAddDepartment
-                        }
-                    >
-                        + Add Department
-                    </button>
+                {error && (
+                    <div className="department-error">
+                        {error}
+                    </div>
                 )}
 
-                {/* STAFF */}
+                {/* ================================================= */}
+                {/* SUCCESS */}
+                {/* ================================================= */}
 
-                {isStaff && (
-                    <button
-                        className="department-request-btn"
-                        onClick={() =>
-                            openRequestModal(
-                                "ADD_DEPARTMENT"
-                            )
-                        }
-                    >
-                        + Request Department
-                    </button>
+                {successMessage && (
+                    <div className="department-success">
+                        {successMessage}
+                    </div>
                 )}
 
-            </div>
+                {/* ================================================= */}
+                {/* ADMIN REQUEST PANEL */}
+                {/* ================================================= */}
 
-            {/* ================================================= */}
-            {/* ERROR */}
-            {/* ================================================= */}
+                {isAdmin &&
+                    pendingRequests.length > 0 && (
+                        <div className="request-panel">
 
-            {error && (
-                <div className="department-error">
-                    {error}
-                </div>
-            )}
+                            <div className="request-panel-header">
 
-            {/* ================================================= */}
-            {/* SUCCESS */}
-            {/* ================================================= */}
+                                <div>
+                                    <h2>
+                                        Pending Requests
+                                    </h2>
 
-            {successMessage && (
-                <div className="department-success">
-                    {successMessage}
-                </div>
-            )}
+                                    <p>
+                                        Staff requests waiting
+                                        for your approval
+                                    </p>
+                                </div>
 
-            {/* ================================================= */}
-            {/* ADMIN REQUEST PANEL */}
-            {/* ================================================= */}
-
-            {isAdmin &&
-                pendingRequests.length > 0 && (
-                    <div className="request-panel">
-
-                        <div className="request-panel-header">
-
-                            <div>
-                                <h2>
-                                    Pending Requests
-                                </h2>
-
-                                <p>
-                                    Staff requests waiting
-                                    for your approval
-                                </p>
-                            </div>
-
-                            <span className="request-count">
+                                <span className="request-count">
                                 {
                                     pendingRequests.length
                                 }
                             </span>
 
-                        </div>
+                            </div>
 
-                        <div className="request-list">
+                            <div className="request-list">
 
-                            {pendingRequests.map(
-                                (request) => (
-                                    <div
-                                        className="request-card"
-                                        key={
-                                            request.requestId
-                                        }
-                                    >
-
-                                        <div className="request-card-info">
-
-                                            <h3>
-                                                {getRequestTypeLabel(
-                                                    request.requestType
-                                                )}
-                                            </h3>
-
-                                            <p>
-                                                <strong>
-                                                    Requested by:
-                                                </strong>{" "}
-                                                {
-                                                    request.requestedBy
-                                                }
-                                            </p>
-
-                                            {request.departmentName && (
-                                                <p>
-                                                    <strong>
-                                                        Department:
-                                                    </strong>{" "}
-                                                    {
-                                                        request.departmentName
-                                                    }
-                                                </p>
-                                            )}
-
-                                            {request.positionName && (
-                                                <p>
-                                                    <strong>
-                                                        Position:
-                                                    </strong>{" "}
-                                                    {
-                                                        request.positionName
-                                                    }
-                                                </p>
-                                            )}
-
-                                            {request.oldName && (
-                                                <p>
-                                                    <strong>
-                                                        Current:
-                                                    </strong>{" "}
-                                                    {
-                                                        request.oldName
-                                                    }
-                                                </p>
-                                            )}
-
-                                            {request.requestedName && (
-                                                <p>
-                                                    <strong>
-                                                        Requested:
-                                                    </strong>{" "}
-                                                    {
-                                                        request.requestedName
-                                                    }
-                                                </p>
-                                            )}
-
-                                            {request.reason && (
-                                                <p>
-                                                    <strong>
-                                                        Reason:
-                                                    </strong>{" "}
-                                                    {
-                                                        request.reason
-                                                    }
-                                                </p>
-                                            )}
-
-                                        </div>
-
-                                        <div className="request-actions">
-
-                                            <button
-                                                className="approve-btn"
-                                                onClick={() =>
-                                                    approveRequest(
-                                                        request
-                                                    )
-                                                }
-                                            >
-                                                Accept
-                                            </button>
-
-                                            <button
-                                                className="reject-btn"
-                                                onClick={() =>
-                                                    rejectRequest(
-                                                        request
-                                                    )
-                                                }
-                                            >
-                                                Reject
-                                            </button>
-
-                                        </div>
-
-                                    </div>
-                                )
-                            )}
-
-                        </div>
-                    </div>
-                )}
-
-            {/* ================================================= */}
-            {/* MAIN CONTENT */}
-            {/* ================================================= */}
-
-            <div className="department-content">
-
-                {/* ================================================= */}
-                {/* DEPARTMENT LIST */}
-                {/* ================================================= */}
-
-                <div className="department-list-card">
-
-                    <div className="section-title">
-
-                        <h2>
-                            Departments
-                        </h2>
-
-                    </div>
-
-                    {loading ? (
-                        <div className="empty-state">
-                            <p>
-                                Loading departments...
-                            </p>
-                        </div>
-                    ) : departments.length === 0 ? (
-                        <div className="empty-state">
-
-                            <p>
-                                No departments found.
-                            </p>
-
-                            {isAdmin && (
-                                <button
-                                    onClick={
-                                        openAddDepartment
-                                    }
-                                >
-                                    Add Department
-                                </button>
-                            )}
-
-                            {isStaff && (
-                                <button
-                                    onClick={() =>
-                                        openRequestModal(
-                                            "ADD_DEPARTMENT"
-                                        )
-                                    }
-                                >
-                                    Request Department
-                                </button>
-                            )}
-
-                        </div>
-                    ) : (
-                        <div className="department-list">
-
-                            {departments.map(
-                                (department) => {
-
-                                    const selected =
-                                        selectedDepartment &&
-                                        selectedDepartment.departmentId ===
-                                        department.departmentId;
-
-                                    return (
+                                {pendingRequests.map(
+                                    (request) => (
                                         <div
+                                            className="request-card"
                                             key={
-                                                department.departmentId
-                                            }
-                                            className={`department-item ${
-                                                selected
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                selectDepartment(
-                                                    department
-                                                )
+                                                request.requestId
                                             }
                                         >
 
-                                            <div className="department-item-name">
+                                            <div className="request-card-info">
+
+                                                <h3>
+                                                    {getRequestTypeLabel(
+                                                        request.requestType
+                                                    )}
+                                                </h3>
+
+                                                <p>
+                                                    <strong>
+                                                        Requested by:
+                                                    </strong>{" "}
+                                                    {
+                                                        request.requestedBy
+                                                    }
+                                                </p>
+
+                                                {request.departmentName && (
+                                                    <p>
+                                                        <strong>
+                                                            Department:
+                                                        </strong>{" "}
+                                                        {
+                                                            request.departmentName
+                                                        }
+                                                    </p>
+                                                )}
+
+                                                {request.positionName && (
+                                                    <p>
+                                                        <strong>
+                                                            Position:
+                                                        </strong>{" "}
+                                                        {
+                                                            request.positionName
+                                                        }
+                                                    </p>
+                                                )}
+
+                                                {request.oldName && (
+                                                    <p>
+                                                        <strong>
+                                                            Current:
+                                                        </strong>{" "}
+                                                        {
+                                                            request.oldName
+                                                        }
+                                                    </p>
+                                                )}
+
+                                                {request.requestedName && (
+                                                    <p>
+                                                        <strong>
+                                                            Requested:
+                                                        </strong>{" "}
+                                                        {
+                                                            request.requestedName
+                                                        }
+                                                    </p>
+                                                )}
+
+                                                {request.reason && (
+                                                    <p>
+                                                        <strong>
+                                                            Reason:
+                                                        </strong>{" "}
+                                                        {
+                                                            request.reason
+                                                        }
+                                                    </p>
+                                                )}
+
+                                            </div>
+
+                                            <div className="request-actions">
+
+                                                <button
+                                                    className="approve-btn"
+                                                    onClick={() =>
+                                                        approveRequest(
+                                                            request
+                                                        )
+                                                    }
+                                                >
+                                                    Accept
+                                                </button>
+
+                                                <button
+                                                    className="reject-btn"
+                                                    onClick={() =>
+                                                        rejectRequest(
+                                                            request
+                                                        )
+                                                    }
+                                                >
+                                                    Reject
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+                                    )
+                                )}
+
+                            </div>
+                        </div>
+                    )}
+
+                {/* ================================================= */}
+                {/* MAIN CONTENT */}
+                {/* ================================================= */}
+
+                <div className="department-content">
+
+                    {/* ================================================= */}
+                    {/* DEPARTMENT LIST */}
+                    {/* ================================================= */}
+
+                    <div className="department-list-card">
+
+                        <div className="section-title">
+
+                            <h2>
+                                Departments
+                            </h2>
+
+                        </div>
+
+                        {loading ? (
+                            <div className="empty-state">
+                                <p>
+                                    Loading departments...
+                                </p>
+                            </div>
+                        ) : departments.length === 0 ? (
+                            <div className="empty-state">
+
+                                <p>
+                                    No departments found.
+                                </p>
+
+                                {isAdmin && (
+                                    <button
+                                        onClick={
+                                            openAddDepartment
+                                        }
+                                    >
+                                        Add Department
+                                    </button>
+                                )}
+
+                                {isStaff && (
+                                    <button
+                                        onClick={() =>
+                                            openRequestModal(
+                                                "ADD_DEPARTMENT"
+                                            )
+                                        }
+                                    >
+                                        Request Department
+                                    </button>
+                                )}
+
+                            </div>
+                        ) : (
+                            <div className="department-list">
+
+                                {departments.map(
+                                    (department) => {
+
+                                        const selected =
+                                            selectedDepartment &&
+                                            selectedDepartment.departmentId ===
+                                            department.departmentId;
+
+                                        return (
+                                            <div
+                                                key={
+                                                    department.departmentId
+                                                }
+                                                className={`department-item ${
+                                                    selected
+                                                        ? "selected"
+                                                        : ""
+                                                }`}
+                                                onClick={() =>
+                                                    selectDepartment(
+                                                        department
+                                                    )
+                                                }
+                                            >
+
+                                                <div className="department-item-name">
 
                                                 <span>
                                                     {
@@ -1380,24 +1463,278 @@ function Department() {
                                                     }
                                                 </span>
 
+                                                </div>
+
+                                                {/* ================================================= */}
+                                                {/* DEPARTMENT ACTIONS */}
+                                                {/* ================================================= */}
+
+                                                <div className="department-item-actions">
+
+                                                    {/* VIEW */}
+                                                    <button
+                                                        className="view-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+
+                                                            viewDepartment(
+                                                                department
+                                                            );
+                                                        }}
+                                                    >
+                                                        View
+                                                    </button>
+
+                                                    {/* ADMIN */}
+                                                    {isAdmin && (
+                                                        <>
+                                                            <button
+                                                                className="edit-btn"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+
+                                                                    openEditDepartment(
+                                                                        department
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Edit
+                                                            </button>
+
+                                                            <button
+                                                                className="delete-btn"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+
+                                                                    deleteDepartment(
+                                                                        department
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </>
+                                                    )}
+
+                                                    {/* STAFF */}
+                                                    {isStaff && (
+                                                        <button
+                                                            className="request-small-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+
+                                                                openRequestModal(
+                                                                    "EDIT_DEPARTMENT",
+                                                                    department
+                                                                );
+                                                            }}
+                                                        >
+                                                            Request Edit
+                                                        </button>
+                                                    )}
+
+                                                </div>
+
+                                            </div>
+                                        );
+                                    }
+                                )}
+
+                            </div>
+                        )}
+
+                    </div>
+
+                    {/* ================================================= */}
+                    {/* POSITION LIST */}
+                    {/* ================================================= */}
+
+                    <div className="position-list-card">
+
+                        <div className="position-header">
+
+                            <div>
+
+                                <h2>
+                                    Positions
+                                </h2>
+
+                                {selectedDepartment && (
+                                    <p>
+                                        {
+                                            selectedDepartment.departmentName
+                                        }
+                                    </p>
+                                )}
+
+                            </div>
+
+                            {/* ADMIN ADD POSITION */}
+
+                            {isAdmin &&
+                                selectedDepartment && (
+                                    <button
+                                        className="position-add-btn"
+                                        onClick={
+                                            openAddPosition
+                                        }
+                                    >
+                                        + Add Position
+                                    </button>
+                                )}
+
+                            {/* STAFF ADD POSITION */}
+
+                            {isStaff &&
+                                selectedDepartment && (
+                                    <button
+                                        className="position-request-btn"
+                                        onClick={() =>
+                                            openRequestModal(
+                                                "ADD_POSITION",
+                                                selectedDepartment
+                                            )
+                                        }
+                                    >
+                                        + Request Position
+                                    </button>
+                                )}
+
+                        </div>
+
+                        {/* ================================================= */}
+                        {/* DEPARTMENT WEEKLY OFF SETTINGS */}
+                        {/* ================================================= */}
+                        {selectedDepartment && (
+                            <section className="weekly-off-panel">
+                                <div className="weekly-off-heading">
+                                    <div>
+                                        <h3>Weekly Off Days</h3>
+                                        <p>Configure non-working days for {selectedDepartment.departmentName}.</p>
+                                        <div className="weekly-off-summary">
+                                            {weeklyOffs.length ? weeklyOffs.map((day) => day.charAt(0) + day.slice(1).toLowerCase()).join(", ") : "No weekly off days selected"}
+                                        </div>
+                                    </div>
+                                    {isAdmin && (
+                                        <button type="button" className="weekly-off-edit-btn" onClick={() => setShowWeeklyOffEditor((value) => !value)}>
+                                            {showWeeklyOffEditor ? "Close" : "Configure Weekly Offs"}
+                                        </button>
+                                    )}
+                                </div>
+                                {weeklyOffsLoading && <p className="weekly-off-hint">Loading weekly off settings...</p>}
+                                {isAdmin && showWeeklyOffEditor && (
+                                    <div className="weekly-off-editor">
+                                        <p>Select all days that are weekly holidays for this department.</p>
+                                        <div className="weekly-off-days">
+                                            {WEEK_DAYS.map((day) => (
+                                                <label className="weekly-off-day" key={day}>
+                                                    <input type="checkbox" checked={weeklyOffs.includes(day)} onChange={() => toggleWeeklyOff(day)} />
+                                                    <span>{day.charAt(0) + day.slice(1).toLowerCase()}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div className="weekly-off-actions">
+                                            <button type="button" className="cancel-btn" onClick={() => { setShowWeeklyOffEditor(false); loadWeeklyOffs(selectedDepartment); }}>Cancel</button>
+                                            <button type="button" className="save-btn" onClick={saveWeeklyOffs} disabled={weeklyOffsSaving || weeklyOffsLoading}>
+                                                {weeklyOffsSaving ? "Saving..." : "Save Weekly Offs"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* ================================================= */}
+                        {/* NO DEPARTMENT SELECTED */}
+                        {/* ================================================= */}
+
+                        {!selectedDepartment ? (
+                            <div className="empty-state">
+
+                                <p>
+                                    Select a department to
+                                    view positions.
+                                </p>
+
+                            </div>
+
+                        ) : positionsLoading ? (
+
+                            <div className="empty-state">
+
+                                <p>
+                                    Loading positions...
+                                </p>
+
+                            </div>
+
+                        ) : positions.length === 0 ? (
+
+                            <div className="empty-state">
+
+                                <p>
+                                    No positions found in this
+                                    department.
+                                </p>
+
+                                {isAdmin && (
+                                    <button
+                                        onClick={
+                                            openAddPosition
+                                        }
+                                    >
+                                        Add Position
+                                    </button>
+                                )}
+
+                                {isStaff && (
+                                    <button
+                                        onClick={() =>
+                                            openRequestModal(
+                                                "ADD_POSITION",
+                                                selectedDepartment
+                                            )
+                                        }
+                                    >
+                                        Request Position
+                                    </button>
+                                )}
+
+                            </div>
+
+                        ) : (
+
+                            <div className="position-list">
+
+                                {positions.map(
+                                    (position) => (
+                                        <div
+                                            className="position-item"
+                                            key={
+                                                position.positionId
+                                            }
+                                        >
+
+                                            <div className="position-name">
+                                                {
+                                                    position.positionName
+                                                }
                                             </div>
 
                                             {/* ================================================= */}
-                                            {/* DEPARTMENT ACTIONS */}
+                                            {/* POSITION ACTIONS */}
                                             {/* ================================================= */}
 
-                                            <div className="department-item-actions">
+                                            <div className="position-actions">
 
                                                 {/* VIEW */}
                                                 <button
                                                     className="view-btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-
-                                                        viewDepartment(
-                                                            department
-                                                        );
-                                                    }}
+                                                    onClick={() =>
+                                                        viewPosition(
+                                                            position
+                                                        )
+                                                    }
                                                 >
                                                     View
                                                 </button>
@@ -1407,26 +1744,22 @@ function Department() {
                                                     <>
                                                         <button
                                                             className="edit-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-
-                                                                openEditDepartment(
-                                                                    department
-                                                                );
-                                                            }}
+                                                            onClick={() =>
+                                                                openEditPosition(
+                                                                    position
+                                                                )
+                                                            }
                                                         >
                                                             Edit
                                                         </button>
 
                                                         <button
                                                             className="delete-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-
-                                                                deleteDepartment(
-                                                                    department
-                                                                );
-                                                            }}
+                                                            onClick={() =>
+                                                                deletePosition(
+                                                                    position
+                                                                )
+                                                            }
                                                         >
                                                             Delete
                                                         </button>
@@ -1435,546 +1768,338 @@ function Department() {
 
                                                 {/* STAFF */}
                                                 {isStaff && (
-                                                    <button
-                                                        className="request-small-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
+                                                    <>
+                                                        <button
+                                                            className="request-small-btn"
+                                                            onClick={() =>
+                                                                openRequestModal(
+                                                                    "EDIT_POSITION",
+                                                                    selectedDepartment,
+                                                                    position
+                                                                )
+                                                            }
+                                                        >
+                                                            Request Edit
+                                                        </button>
 
-                                                            openRequestModal(
-                                                                "EDIT_DEPARTMENT",
-                                                                department
-                                                            );
-                                                        }}
-                                                    >
-                                                        Request Edit
-                                                    </button>
+                                                        <button
+                                                            className="delete-request-btn"
+                                                            onClick={() =>
+                                                                openRequestModal(
+                                                                    "DELETE_POSITION",
+                                                                    selectedDepartment,
+                                                                    position
+                                                                )
+                                                            }
+                                                        >
+                                                            Request Delete
+                                                        </button>
+                                                    </>
                                                 )}
 
                                             </div>
 
                                         </div>
-                                    );
-                                }
-                            )}
-
-                        </div>
-                    )}
-
-                </div>
-
-                {/* ================================================= */}
-                {/* POSITION LIST */}
-                {/* ================================================= */}
-
-                <div className="position-list-card">
-
-                    <div className="position-header">
-
-                        <div>
-
-                            <h2>
-                                Positions
-                            </h2>
-
-                            {selectedDepartment && (
-                                <p>
-                                    {
-                                        selectedDepartment.departmentName
-                                    }
-                                </p>
-                            )}
-
-                        </div>
-
-                        {/* ADMIN ADD POSITION */}
-
-                        {isAdmin &&
-                            selectedDepartment && (
-                                <button
-                                    className="position-add-btn"
-                                    onClick={
-                                        openAddPosition
-                                    }
-                                >
-                                    + Add Position
-                                </button>
-                            )}
-
-                        {/* STAFF ADD POSITION */}
-
-                        {isStaff &&
-                            selectedDepartment && (
-                                <button
-                                    className="position-request-btn"
-                                    onClick={() =>
-                                        openRequestModal(
-                                            "ADD_POSITION",
-                                            selectedDepartment
-                                        )
-                                    }
-                                >
-                                    + Request Position
-                                </button>
-                            )}
-
-                    </div>
-
-                    {/* ================================================= */}
-                    {/* NO DEPARTMENT SELECTED */}
-                    {/* ================================================= */}
-
-                    {!selectedDepartment ? (
-                        <div className="empty-state">
-
-                            <p>
-                                Select a department to
-                                view positions.
-                            </p>
-
-                        </div>
-
-                    ) : positionsLoading ? (
-
-                        <div className="empty-state">
-
-                            <p>
-                                Loading positions...
-                            </p>
-
-                        </div>
-
-                    ) : positions.length === 0 ? (
-
-                        <div className="empty-state">
-
-                            <p>
-                                No positions found in this
-                                department.
-                            </p>
-
-                            {isAdmin && (
-                                <button
-                                    onClick={
-                                        openAddPosition
-                                    }
-                                >
-                                    Add Position
-                                </button>
-                            )}
-
-                            {isStaff && (
-                                <button
-                                    onClick={() =>
-                                        openRequestModal(
-                                            "ADD_POSITION",
-                                            selectedDepartment
-                                        )
-                                    }
-                                >
-                                    Request Position
-                                </button>
-                            )}
-
-                        </div>
-
-                    ) : (
-
-                        <div className="position-list">
-
-                            {positions.map(
-                                (position) => (
-                                    <div
-                                        className="position-item"
-                                        key={
-                                            position.positionId
-                                        }
-                                    >
-
-                                        <div className="position-name">
-                                            {
-                                                position.positionName
-                                            }
-                                        </div>
-
-                                        {/* ================================================= */}
-                                        {/* POSITION ACTIONS */}
-                                        {/* ================================================= */}
-
-                                        <div className="position-actions">
-
-                                            {/* VIEW */}
-                                            <button
-                                                className="view-btn"
-                                                onClick={() =>
-                                                    viewPosition(
-                                                        position
-                                                    )
-                                                }
-                                            >
-                                                View
-                                            </button>
-
-                                            {/* ADMIN */}
-                                            {isAdmin && (
-                                                <>
-                                                    <button
-                                                        className="edit-btn"
-                                                        onClick={() =>
-                                                            openEditPosition(
-                                                                position
-                                                            )
-                                                        }
-                                                    >
-                                                        Edit
-                                                    </button>
-
-                                                    <button
-                                                        className="delete-btn"
-                                                        onClick={() =>
-                                                            deletePosition(
-                                                                position
-                                                            )
-                                                        }
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </>
-                                            )}
-
-                                            {/* STAFF */}
-                                            {isStaff && (
-                                                <>
-                                                    <button
-                                                        className="request-small-btn"
-                                                        onClick={() =>
-                                                            openRequestModal(
-                                                                "EDIT_POSITION",
-                                                                selectedDepartment,
-                                                                position
-                                                            )
-                                                        }
-                                                    >
-                                                        Request Edit
-                                                    </button>
-
-                                                    <button
-                                                        className="delete-request-btn"
-                                                        onClick={() =>
-                                                            openRequestModal(
-                                                                "DELETE_POSITION",
-                                                                selectedDepartment,
-                                                                position
-                                                            )
-                                                        }
-                                                    >
-                                                        Request Delete
-                                                    </button>
-                                                </>
-                                            )}
-
-                                        </div>
-
-                                    </div>
-                                )
-                            )}
-
-                        </div>
-
-                    )}
-
-                </div>
-
-            </div>
-
-            {/* ========================================================= */}
-            {/* ADMIN DEPARTMENT MODAL */}
-            {/* ========================================================= */}
-
-            {showDepartmentModal && (
-                <div className="modal-overlay">
-
-                    <div className="modal-box">
-
-                        <div className="modal-header">
-
-                            <h2>
-                                {editingDepartment
-                                    ? "Edit Department"
-                                    : "Add Department"}
-                            </h2>
-
-                            <button
-                                className="modal-close"
-                                onClick={
-                                    closeDepartmentModal
-                                }
-                            >
-                                ×
-                            </button>
-
-                        </div>
-
-                        <form
-                            onSubmit={
-                                saveDepartment
-                            }
-                        >
-
-                            <div className="form-group">
-
-                                <label>
-                                    Department Name
-                                </label>
-
-                                <input
-                                    type="text"
-                                    value={
-                                        departmentName
-                                    }
-                                    onChange={(e) =>
-                                        setDepartmentName(
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Enter department name"
-                                    autoFocus
-                                />
+                                    )
+                                )}
 
                             </div>
 
-                            <div className="modal-actions">
+                        )}
+
+                    </div>
+
+                </div>
+
+                {/* ========================================================= */}
+                {/* ADMIN DEPARTMENT MODAL */}
+                {/* ========================================================= */}
+
+                {showDepartmentModal && (
+                    <div className="modal-overlay">
+
+                        <div className="modal-box">
+
+                            <div className="modal-header">
+
+                                <h2>
+                                    {editingDepartment
+                                        ? "Edit Department"
+                                        : "Add Department"}
+                                </h2>
 
                                 <button
-                                    type="button"
-                                    className="cancel-btn"
+                                    className="modal-close"
                                     onClick={
                                         closeDepartmentModal
                                     }
                                 >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="save-btn"
-                                >
-                                    {editingDepartment
-                                        ? "Update"
-                                        : "Add"}
+                                    ×
                                 </button>
 
                             </div>
 
-                        </form>
-
-                    </div>
-
-                </div>
-            )}
-
-            {/* ========================================================= */}
-            {/* ADMIN POSITION MODAL */}
-            {/* ========================================================= */}
-
-            {showPositionModal && (
-                <div className="modal-overlay">
-
-                    <div className="modal-box">
-
-                        <div className="modal-header">
-
-                            <h2>
-                                {editingPosition
-                                    ? "Edit Position"
-                                    : "Add Position"}
-                            </h2>
-
-                            <button
-                                className="modal-close"
-                                onClick={
-                                    closePositionModal
+                            <form
+                                onSubmit={
+                                    saveDepartment
                                 }
                             >
-                                ×
-                            </button>
+
+                                <div className="form-group">
+
+                                    <label>
+                                        Department Name
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            departmentName
+                                        }
+                                        onChange={(e) =>
+                                            setDepartmentName(
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Enter department name"
+                                        autoFocus
+                                    />
+
+                                </div>
+
+                                <div className="modal-actions">
+
+                                    <button
+                                        type="button"
+                                        className="cancel-btn"
+                                        onClick={
+                                            closeDepartmentModal
+                                        }
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className="save-btn"
+                                    >
+                                        {editingDepartment
+                                            ? "Update"
+                                            : "Add"}
+                                    </button>
+
+                                </div>
+
+                            </form>
 
                         </div>
 
-                        <form
-                            onSubmit={
-                                savePosition
-                            }
-                        >
+                    </div>
+                )}
 
-                            <div className="form-group">
+                {/* ========================================================= */}
+                {/* ADMIN POSITION MODAL */}
+                {/* ========================================================= */}
 
-                                <label>
-                                    Position Name
-                                </label>
+                {showPositionModal && (
+                    <div className="modal-overlay">
 
-                                <input
-                                    type="text"
-                                    value={
-                                        positionName
-                                    }
-                                    onChange={(e) =>
-                                        setPositionName(
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Enter position name"
-                                    autoFocus
-                                />
+                        <div className="modal-box">
 
-                            </div>
+                            <div className="modal-header">
 
-                            <div className="modal-actions">
+                                <h2>
+                                    {editingPosition
+                                        ? "Edit Position"
+                                        : "Add Position"}
+                                </h2>
 
                                 <button
-                                    type="button"
-                                    className="cancel-btn"
+                                    className="modal-close"
                                     onClick={
                                         closePositionModal
                                     }
                                 >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="save-btn"
-                                >
-                                    {editingPosition
-                                        ? "Update"
-                                        : "Add"}
+                                    ×
                                 </button>
 
                             </div>
 
-                        </form>
-
-                    </div>
-
-                </div>
-            )}
-
-            {/* ========================================================= */}
-            {/* STAFF REQUEST MODAL */}
-            {/* ========================================================= */}
-
-            {showRequestModal && (
-                <div className="modal-overlay">
-
-                    <div className="modal-box request-modal">
-
-                        <div className="modal-header">
-
-                            <h2>
-                                Send Request
-                            </h2>
-
-                            <button
-                                className="modal-close"
-                                onClick={
-                                    closeRequestModal
+                            <form
+                                onSubmit={
+                                    savePosition
                                 }
                             >
-                                ×
-                            </button>
+
+                                <div className="form-group">
+
+                                    <label>
+                                        Position Name
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            positionName
+                                        }
+                                        onChange={(e) =>
+                                            setPositionName(
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Enter position name"
+                                        autoFocus
+                                    />
+
+                                </div>
+
+                                <div className="modal-actions">
+
+                                    <button
+                                        type="button"
+                                        className="cancel-btn"
+                                        onClick={
+                                            closePositionModal
+                                        }
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className="save-btn"
+                                    >
+                                        {editingPosition
+                                            ? "Update"
+                                            : "Add"}
+                                    </button>
+
+                                </div>
+
+                            </form>
 
                         </div>
 
-                        <div className="request-description">
-                            {getRequestDescription()}
-                        </div>
+                    </div>
+                )}
 
-                        <form
-                            onSubmit={
-                                submitStaffRequest
-                            }
-                        >
+                {/* ========================================================= */}
+                {/* STAFF REQUEST MODAL */}
+                {/* ========================================================= */}
 
-                            {/* NAME */}
+                {showRequestModal && (
+                    <div className="modal-overlay">
 
-                            {requestType !==
-                                "DELETE_POSITION" && (
-                                    <div className="form-group">
+                        <div className="modal-box request-modal">
 
-                                        <label>
-                                            Requested Name
-                                        </label>
+                            <div className="modal-header">
 
-                                        <input
-                                            type="text"
-                                            value={
-                                                requestName
-                                            }
-                                            onChange={(e) =>
-                                                setRequestName(
-                                                    e.target.value
-                                                )
-                                            }
-                                            placeholder="Enter requested name"
-                                            autoFocus
-                                        />
-
-                                    </div>
-                                )}
-
-                            {/* REASON */}
-
-                            <div className="form-group">
-
-                                <label>
-                                    Reason
-                                </label>
-
-                                <textarea
-                                    value={
-                                        requestReason
-                                    }
-                                    onChange={(e) =>
-                                        setRequestReason(
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Enter reason (optional)"
-                                    rows="4"
-                                />
-
-                            </div>
-
-                            {/* ACTIONS */}
-
-                            <div className="modal-actions">
+                                <h2>
+                                    Send Request
+                                </h2>
 
                                 <button
-                                    type="button"
-                                    className="cancel-btn"
+                                    className="modal-close"
                                     onClick={
                                         closeRequestModal
                                     }
                                 >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="save-btn"
-                                >
-                                    Send Request
+                                    ×
                                 </button>
 
                             </div>
 
-                        </form>
+                            <div className="request-description">
+                                {getRequestDescription()}
+                            </div>
+
+                            <form
+                                onSubmit={
+                                    submitStaffRequest
+                                }
+                            >
+
+                                {/* NAME */}
+
+                                {requestType !==
+                                    "DELETE_POSITION" && (
+                                        <div className="form-group">
+
+                                            <label>
+                                                Requested Name
+                                            </label>
+
+                                            <input
+                                                type="text"
+                                                value={
+                                                    requestName
+                                                }
+                                                onChange={(e) =>
+                                                    setRequestName(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Enter requested name"
+                                                autoFocus
+                                            />
+
+                                        </div>
+                                    )}
+
+                                {/* REASON */}
+
+                                <div className="form-group">
+
+                                    <label>
+                                        Reason
+                                    </label>
+
+                                    <textarea
+                                        value={
+                                            requestReason
+                                        }
+                                        onChange={(e) =>
+                                            setRequestReason(
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Enter reason (optional)"
+                                        rows="4"
+                                    />
+
+                                </div>
+
+                                {/* ACTIONS */}
+
+                                <div className="modal-actions">
+
+                                    <button
+                                        type="button"
+                                        className="cancel-btn"
+                                        onClick={
+                                            closeRequestModal
+                                        }
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className="save-btn"
+                                    >
+                                        Send Request
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+                        </div>
 
                     </div>
+                )}
 
-                </div>
-            )}
-
-        </div>
+            </div>
         </AdminLayout>
     );
 }

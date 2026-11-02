@@ -1,6 +1,8 @@
 package com.kaisha.payroll.payroll.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,61 +12,58 @@ import java.time.LocalDateTime;
         name = "payroll",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_payroll_employee_period",
+                        name = "uk_payroll_company_employee_period",
                         columnNames = {
+                                "company_id",
                                 "employee_id",
                                 "pay_period"
                         }
                 )
         }
 )
+@Getter
+@Setter
 public class Payroll {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long payrollId;
 
-    @Column(
-            name = "employee_id",
-            nullable = false,
-            length = 50
-    )
+    @Column(name = "employee_id", nullable = false, length = 50)
     private String employeeId;
 
-    @Column(
-            name = "pay_period",
-            nullable = false,
-            length = 7
-    )
+    @Column(name = "company_id", nullable = false, length = 100)
+    private String companyId;
+
+    @Column(name = "pay_period", nullable = false, length = 7)
     private String payPeriod;
 
-    @Column(
-            nullable = false,
-            precision = 15,
-            scale = 2
-    )
-    private BigDecimal grossSalary;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal grossSalary = BigDecimal.ZERO;
 
-    @Column(
-            nullable = false,
-            precision = 15,
-            scale = 2
-    )
-    private BigDecimal totalDeductions;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalDeductions = BigDecimal.ZERO;
 
-    @Column(
-            nullable = false,
-            precision = 15,
-            scale = 2
-    )
-    private BigDecimal netSalary;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal netSalary = BigDecimal.ZERO;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal attendanceDeduction = BigDecimal.ZERO;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal otherDeductions = BigDecimal.ZERO;
+
+    private Integer presentDays;
+    private Integer absentDays;
+    private Integer halfDays;
+    private Integer paidHolidays;
+    private Integer weeklyOffs;
+    private Integer paidLeaveDays;
+    private Integer unpaidLeaveDays;
 
     @Enumerated(EnumType.STRING)
-    @Column(
-            nullable = false,
-            length = 20
-    )
-    private PayrollStatus status;
+    @Column(nullable = false, length = 20)
+    private PayrollStatus status = PayrollStatus.READY;
 
     private LocalDateTime processedAt;
 
@@ -73,9 +72,9 @@ public class Payroll {
 
     @PrePersist
     protected void onCreate() {
-
-        createdAt =
-                LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
     public enum PayrollStatus {
@@ -84,87 +83,5 @@ public class Payroll {
         CANCELLED
     }
 
-    public Long getPayrollId() {
-        return payrollId;
-    }
 
-    public String getEmployeeId() {
-        return employeeId;
-    }
-
-    public void setEmployeeId(
-            String employeeId) {
-
-        this.employeeId =
-                employeeId;
-    }
-
-    public String getPayPeriod() {
-        return payPeriod;
-    }
-
-    public void setPayPeriod(
-            String payPeriod) {
-
-        this.payPeriod =
-                payPeriod;
-    }
-
-    public BigDecimal getGrossSalary() {
-        return grossSalary;
-    }
-
-    public void setGrossSalary(
-            BigDecimal grossSalary) {
-
-        this.grossSalary =
-                grossSalary;
-    }
-
-    public BigDecimal getTotalDeductions() {
-        return totalDeductions;
-    }
-
-    public void setTotalDeductions(
-            BigDecimal totalDeductions) {
-
-        this.totalDeductions =
-                totalDeductions;
-    }
-
-    public BigDecimal getNetSalary() {
-        return netSalary;
-    }
-
-    public void setNetSalary(
-            BigDecimal netSalary) {
-
-        this.netSalary =
-                netSalary;
-    }
-
-    public PayrollStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(
-            PayrollStatus status) {
-
-        this.status = status;
-    }
-
-    public LocalDateTime getProcessedAt() {
-        return processedAt;
-    }
-
-    public void setProcessedAt(
-            LocalDateTime processedAt) {
-
-        this.processedAt =
-                processedAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
 }

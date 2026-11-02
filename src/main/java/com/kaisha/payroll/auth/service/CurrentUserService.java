@@ -14,6 +14,7 @@ public class CurrentUserService {
 
     private final UserRepository userRepository;
 
+
     public CurrentUserService(
             UserRepository userRepository
     ) {

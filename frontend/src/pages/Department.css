@@ -1082,3 +1082,90 @@ button:disabled {
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   DEPARTMENT WEEKLY OFF SETTINGS
+   ========================================================= */
+.weekly-off-panel {
+    margin: 14px 18px 18px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+}
+.weekly-off-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+.weekly-off-heading h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 15px;
+    font-weight: 700;
+}
+.weekly-off-heading p,
+.weekly-off-editor > p,
+.weekly-off-hint {
+    margin: 5px 0 0;
+    color: #6b7280;
+    font-size: 12px;
+}
+.weekly-off-summary {
+    margin-top: 9px;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 600;
+}
+.weekly-off-edit-btn {
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 13px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.weekly-off-edit-btn:hover { background: #1d4ed8; }
+.weekly-off-editor {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+.weekly-off-days {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 12px;
+}
+.weekly-off-day {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 7px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    background: #fff;
+    color: #374151;
+    font-size: 12px;
+    cursor: pointer;
+}
+.weekly-off-day input { accent-color: #2563eb; }
+.weekly-off-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+@media (max-width: 700px) {
+    .weekly-off-heading { flex-direction: column; }
+    .weekly-off-edit-btn { width: 100%; }
+    .weekly-off-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .weekly-off-actions { flex-direction: column-reverse; }
+    .weekly-off-actions button { width: 100%; }
+}

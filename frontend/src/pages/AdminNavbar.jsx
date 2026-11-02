@@ -22,6 +22,10 @@ const AdminNavbar = () => {
                     Department
                 </NavLink>
 
+                <NavLink to="/admin/attendance" className="admin-nav-link">
+                    Attendance
+                </NavLink>
+
                 <NavLink to="/admin/salary" className="admin-nav-link">
                     Salary
                 </NavLink>
@@ -30,17 +34,12 @@ const AdminNavbar = () => {
                     Report
                 </NavLink>
 
-                <NavLink to="/admin/attendance" className="admin-nav-link">
-                    Attendance
+                <NavLink to="/admin/downloads" className="admin-nav-link">
+                    Downloads
                 </NavLink>
 
                 <NavLink to="/admin/staff-id-password" className="admin-nav-link">
                     Staff ID & Password
-                </NavLink>
-
-
-                <NavLink to="/admin/downloads" className="admin-nav-link">
-                    Downloads
                 </NavLink>
 
                 <NavLink to="/admin/help-support" className="admin-nav-link">

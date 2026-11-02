@@ -2,6 +2,7 @@ package com.kaisha.payroll.attendance.repository;
 
 import com.kaisha.payroll.attendance.entity.Attendance;
 import com.kaisha.payroll.attendance.entity.AttendanceStatus;
+import com.kaisha.payroll.employee.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
@@ -52,5 +53,11 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             String companyId,
             LocalDate attendanceDate,
             AttendanceStatus status
+    );
+
+    List<Attendance> findByEmployeeAndAttendanceDateBetween(
+            Employee employee,
+            LocalDate startDate,
+            LocalDate endDate
     );
 }

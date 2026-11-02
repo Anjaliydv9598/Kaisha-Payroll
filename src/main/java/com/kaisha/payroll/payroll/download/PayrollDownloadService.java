@@ -1,5 +1,7 @@
+
 package com.kaisha.payroll.payroll.download;
 
+import com.kaisha.payroll.auth.service.CurrentUserService;
 import com.kaisha.payroll.payroll.entity.Payroll;
 import com.kaisha.payroll.payroll.repository.PayrollRepository;
 import com.kaisha.payroll.salary.entity.Salary;
@@ -10,6 +12,7 @@ import com.lowagie.text.pdf.PdfCopy;
 import com.lowagie.text.pdf.PdfReader;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
@@ -21,42 +24,33 @@ import java.util.zip.ZipOutputStream;
 public class PayrollDownloadService {
 
     private final PayrollRepository payrollRepository;
-
     private final SalaryRepository salaryRepository;
-
     private final PayrollPdfService pdfService;
-
     private final PayrollExcelService excelService;
-
     private final PayrollCsvService csvService;
+    private final CurrentUserService currentUserService;
 
     public PayrollDownloadService(
             PayrollRepository payrollRepository,
             SalaryRepository salaryRepository,
             PayrollPdfService pdfService,
             PayrollExcelService excelService,
-            PayrollCsvService csvService) {
+            PayrollCsvService csvService,
+            CurrentUserService currentUserService) {
 
-        this.payrollRepository =
-                payrollRepository;
-
-        this.salaryRepository =
-                salaryRepository;
-
-        this.pdfService =
-                pdfService;
-
-        this.excelService =
-                excelService;
-
-        this.csvService =
-                csvService;
+        this.payrollRepository = payrollRepository;
+        this.salaryRepository = salaryRepository;
+        this.pdfService = pdfService;
+        this.excelService = excelService;
+        this.csvService = csvService;
+        this.currentUserService = currentUserService;
     }
 
     // =====================================================
     // MAIN DOWNLOAD METHOD
     // =====================================================
 
+    @Transactional(readOnly = true)
     public byte[] download(
             String payPeriod,
             String scope,
@@ -65,47 +59,44 @@ public class PayrollDownloadService {
             Integer toRecord,
             String format) {
 
-        if (payPeriod == null ||
-                payPeriod.trim().isEmpty()) {
-
+        if (payPeriod == null || payPeriod.trim().isEmpty()) {
             throw new IllegalArgumentException(
                     "Pay period is required"
             );
         }
 
-        if (format == null ||
-                format.trim().isEmpty()) {
-
+        if (format == null || format.trim().isEmpty()) {
             throw new IllegalArgumentException(
                     "Download format is required"
             );
         }
 
+        String companyId =
+                currentUserService.getCurrentCompanyId();
+
         List<Payroll> records =
                 payrollRepository
-                        .findByPayPeriodOrderByEmployeeIdAsc(
+                        .findByCompanyIdAndPayPeriodOrderByEmployeeIdAsc(
+                                companyId,
                                 payPeriod
                         );
 
-        records =
-                filterRecords(
-                        records,
-                        scope,
-                        employeeIds,
-                        fromRecord,
-                        toRecord
-                );
+        records = filterRecords(
+                records,
+                scope,
+                employeeIds,
+                fromRecord,
+                toRecord
+        );
 
         if (records.isEmpty()) {
-
             throw new RuntimeException(
-                    "No payroll records found for "
-                            + payPeriod
+                    "No payroll records found for " + payPeriod
             );
         }
 
         String normalizedFormat =
-                format.trim().toUpperCase();
+                format.trim().toUpperCase(Locale.ROOT);
 
         return switch (normalizedFormat) {
 
@@ -123,8 +114,7 @@ public class PayrollDownloadService {
 
             default ->
                     throw new IllegalArgumentException(
-                            "Unsupported download format: "
-                                    + format
+                            "Unsupported download format: " + format
                     );
         };
     }
@@ -140,15 +130,11 @@ public class PayrollDownloadService {
             Integer fromRecord,
             Integer toRecord) {
 
-        if (records == null ||
-                records.isEmpty()) {
-
+        if (records == null || records.isEmpty()) {
             return Collections.emptyList();
         }
 
-        if (scope == null ||
-                scope.trim().isEmpty()) {
-
+        if (scope == null || scope.trim().isEmpty()) {
             return records;
         }
 
@@ -161,36 +147,21 @@ public class PayrollDownloadService {
             Set<String> selected =
                     employeeIds == null
                             ? Set.of()
-                            : employeeIds
-                              .stream()
-                              .filter(
-                                      Objects::nonNull
-                              )
-                              .map(
-                                      String::trim
-                              )
-                              .filter(
-                                      id ->
-                                      !id.isEmpty()
-                              )
-                              .collect(
-                                      Collectors.toSet()
-                              );
+                            : employeeIds.stream()
+                              .filter(Objects::nonNull)
+                              .map(String::trim)
+                              .filter(id -> !id.isEmpty())
+                              .collect(Collectors.toSet());
 
             if (selected.isEmpty()) {
-
                 throw new IllegalArgumentException(
                         "Please select at least one employee"
                 );
             }
 
             return records.stream()
-                    .filter(
-                            payroll ->
-                                    selected.contains(
-                                            payroll.getEmployeeId()
-                                    )
-                    )
+                    .filter(payroll ->
+                            selected.contains(payroll.getEmployeeId()))
                     .toList();
         }
 
@@ -200,15 +171,9 @@ public class PayrollDownloadService {
 
         if ("RANGE".equalsIgnoreCase(scope)) {
 
-            int from =
-                    fromRecord == null
-                            ? 1
-                            : fromRecord;
+            int from = fromRecord == null ? 1 : fromRecord;
 
-            int to =
-                    toRecord == null
-                            ? records.size()
-                            : toRecord;
+            int to = toRecord == null ? records.size() : toRecord;
 
             if (from < 1) {
                 throw new IllegalArgumentException(
@@ -223,14 +188,12 @@ public class PayrollDownloadService {
             }
 
             if (from > to) {
-
                 throw new IllegalArgumentException(
                         "From record cannot be greater than To record"
                 );
             }
 
             if (from > records.size()) {
-
                 throw new IllegalArgumentException(
                         "From record is outside the available records"
                 );
@@ -240,10 +203,7 @@ public class PayrollDownloadService {
                 to = records.size();
             }
 
-            return records.subList(
-                    from - 1,
-                    to
-            );
+            return records.subList(from - 1, to);
         }
 
         // =================================================
@@ -257,11 +217,14 @@ public class PayrollDownloadService {
     // GET SALARY FOR PAYROLL
     // =====================================================
 
-    private Salary getSalaryForPayroll(
-            Payroll payroll) {
+    private Salary getSalaryForPayroll(Payroll payroll) {
+
+        String companyId =
+                currentUserService.getCurrentCompanyId();
 
         return salaryRepository
-                .findByEmployeeIdAndPayPeriod(
+                .findByCompanyIdAndEmployeeIdAndPayPeriod(
+                        companyId,
                         payroll.getEmployeeId(),
                         payroll.getPayPeriod()
                 )
@@ -289,21 +252,16 @@ public class PayrollDownloadService {
 
         try {
 
-            combinedDocument =
-                    new Document();
+            combinedDocument = new Document();
 
             PdfCopy pdfCopy =
-                    new PdfCopy(
-                            combinedDocument,
-                            output
-                    );
+                    new PdfCopy(combinedDocument, output);
 
             combinedDocument.open();
 
             for (Payroll payroll : records) {
 
-                Salary salary =
-                        getSalaryForPayroll(payroll);
+                Salary salary = getSalaryForPayroll(payroll);
 
                 byte[] pdf =
                         pdfService.generatePayslip(
@@ -311,25 +269,28 @@ public class PayrollDownloadService {
                                 salary
                         );
 
-                PdfReader reader =
-                        new PdfReader(pdf);
+                PdfReader reader = new PdfReader(pdf);
 
-                int numberOfPages =
-                        reader.getNumberOfPages();
+                try {
 
-                for (int page = 1;
-                     page <= numberOfPages;
-                     page++) {
+                    int numberOfPages =
+                            reader.getNumberOfPages();
 
-                    pdfCopy.addPage(
-                            pdfCopy.getImportedPage(
-                                    reader,
-                                    page
-                            )
-                    );
+                    for (int page = 1;
+                         page <= numberOfPages;
+                         page++) {
+
+                        pdfCopy.addPage(
+                                pdfCopy.getImportedPage(
+                                        reader,
+                                        page
+                                )
+                        );
+                    }
+
+                } finally {
+                    reader.close();
                 }
-
-                reader.close();
             }
 
             combinedDocument.close();
@@ -338,16 +299,13 @@ public class PayrollDownloadService {
 
         } catch (Exception e) {
 
-            if (combinedDocument != null) {
+            if (combinedDocument != null
+                    && combinedDocument.isOpen()) {
 
                 try {
-
-                    if (combinedDocument.isOpen()) {
-                        combinedDocument.close();
-                    }
-
+                    combinedDocument.close();
                 } catch (Exception ignored) {
-                    // Ignore secondary close exception
+                    // Ignore secondary close exception.
                 }
             }
 
@@ -370,17 +328,13 @@ public class PayrollDownloadService {
             ByteArrayOutputStream output =
                     new ByteArrayOutputStream();
 
-            try (
-                    ZipOutputStream zip =
-                            new ZipOutputStream(output)
-            ) {
+            try (ZipOutputStream zip =
+                         new ZipOutputStream(output)) {
 
                 for (Payroll payroll : records) {
 
                     Salary salary =
-                            getSalaryForPayroll(
-                                    payroll
-                            );
+                            getSalaryForPayroll(payroll);
 
                     byte[] pdf =
                             pdfService.generatePayslip(
