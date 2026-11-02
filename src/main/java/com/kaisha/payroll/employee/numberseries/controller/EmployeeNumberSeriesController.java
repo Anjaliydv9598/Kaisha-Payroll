@@ -1,8 +1,10 @@
+
 package com.kaisha.payroll.employee.numberseries.controller;
 
 import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesRequest;
 import com.kaisha.payroll.employee.numberseries.dto.NumberSeriesResponse;
 import com.kaisha.payroll.employee.numberseries.service.EmployeeNumberSeriesService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,9 +24,7 @@ public class EmployeeNumberSeriesController {
     public EmployeeNumberSeriesController(
             EmployeeNumberSeriesService seriesService
     ) {
-
-        this.seriesService =
-                seriesService;
+        this.seriesService = seriesService;
     }
 
     // ============================================================
@@ -34,8 +34,7 @@ public class EmployeeNumberSeriesController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<NumberSeriesResponse>>
-    getAllSeries() {
+    public ResponseEntity<List<NumberSeriesResponse>> getAllSeries() {
 
         return ResponseEntity.ok(
                 seriesService.getAllSeries()
@@ -49,8 +48,7 @@ public class EmployeeNumberSeriesController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NumberSeriesResponse>
-    getSeries(
+    public ResponseEntity<NumberSeriesResponse> getSeries(
             @PathVariable Long id
     ) {
 
@@ -66,15 +64,12 @@ public class EmployeeNumberSeriesController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NumberSeriesResponse>
-    createSeries(
+    public ResponseEntity<NumberSeriesResponse> createSeries(
             @RequestBody NumberSeriesRequest request
     ) {
 
         NumberSeriesResponse response =
-                seriesService.createSeries(
-                        request
-                );
+                seriesService.createSeries(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -88,18 +83,36 @@ public class EmployeeNumberSeriesController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NumberSeriesResponse>
-    updateSeries(
+    public ResponseEntity<NumberSeriesResponse> updateSeries(
             @PathVariable Long id,
             @RequestBody NumberSeriesRequest request
     ) {
 
         return ResponseEntity.ok(
-                seriesService.updateSeries(
-                        id,
-                        request
-                )
+                seriesService.updateSeries(id, request)
         );
+    }
+
+    // ============================================================
+    // SYNCHRONIZE EXISTING NUMBER SERIES WITH DEPARTMENTS
+    // ADMIN ONLY
+    // RUN ONCE TO MIGRATE EXISTING RECORDS
+    // ============================================================
+
+    @PostMapping("/sync-departments")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> syncDepartments() {
+
+        seriesService.syncExistingSeriesWithDepartments();
+
+        Map<String, String> response = new HashMap<>();
+
+        response.put(
+                "message",
+                "Departments synchronized successfully"
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     // ============================================================
@@ -115,8 +128,7 @@ public class EmployeeNumberSeriesController {
 
         seriesService.deleteSeries(id);
 
-        Map<String, String> response =
-                new HashMap<>();
+        Map<String, String> response = new HashMap<>();
 
         response.put(
                 "message",
