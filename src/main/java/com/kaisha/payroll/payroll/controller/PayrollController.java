@@ -1,3 +1,4 @@
+
 package com.kaisha.payroll.payroll.controller;
 
 import com.kaisha.payroll.payroll.dto.PayrollProcessRequest;
@@ -16,79 +17,75 @@ public class PayrollController {
 
     private final PayrollService payrollService;
 
-    public PayrollController(
-            PayrollService payrollService) {
-
-        this.payrollService =
-                payrollService;
+    public PayrollController(PayrollService payrollService) {
+        this.payrollService = payrollService;
     }
 
+    // PROCESS PAYROLL
     @PostMapping("/process")
-    public ResponseEntity<List<PayrollResponse>>
-    process(
-            @RequestBody PayrollProcessRequest request) {
+    public ResponseEntity<List<PayrollResponse>> process(
+            @RequestBody(required = false) PayrollProcessRequest request) {
+
+        if (request == null ||
+                request.getPayPeriod() == null ||
+                request.getPayPeriod().isBlank()) {
+
+            return ResponseEntity.badRequest().build();
+        }
 
         return ResponseEntity.ok(
                 payrollService.processPayroll(
-                        request.getPayPeriod()
+                        request.getPayPeriod().trim()
                 )
         );
     }
 
+    // GET ALL PAYROLL
     @GetMapping
-    public ResponseEntity<List<PayrollResponse>>
-    getAll() {
+    public ResponseEntity<List<PayrollResponse>> getAll() {
 
         return ResponseEntity.ok(
                 payrollService.getAll()
         );
     }
 
+    // GET PAYROLL BY ID
     @GetMapping("/{payrollId}")
-    public ResponseEntity<PayrollResponse>
-    getById(
+    public ResponseEntity<PayrollResponse> getById(
             @PathVariable Long payrollId) {
 
         return ResponseEntity.ok(
-                payrollService.getById(
-                        payrollId
-                )
+                payrollService.getById(payrollId)
         );
     }
 
+    // GET PAYROLL BY EMPLOYEE
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<PayrollResponse>>
-    getByEmployee(
+    public ResponseEntity<List<PayrollResponse>> getByEmployee(
             @PathVariable String employeeId) {
 
         return ResponseEntity.ok(
-                payrollService.getByEmployee(
-                        employeeId
-                )
+                payrollService.getByEmployee(employeeId)
         );
     }
 
+    // GET PAYROLL BY PERIOD
     @GetMapping("/period/{payPeriod}")
-    public ResponseEntity<List<PayrollResponse>>
-    getByPeriod(
+    public ResponseEntity<List<PayrollResponse>> getByPeriod(
             @PathVariable String payPeriod) {
 
         return ResponseEntity.ok(
-                payrollService.getByPeriod(
-                        payPeriod
-                )
+                payrollService.getByPeriod(payPeriod)
         );
     }
 
+    // CANCEL PAYROLL
     @PutMapping("/{payrollId}/cancel")
-    public ResponseEntity<PayrollResponse>
-    cancel(
+    public ResponseEntity<PayrollResponse> cancel(
             @PathVariable Long payrollId) {
 
         return ResponseEntity.ok(
-                payrollService.cancel(
-                        payrollId
-                )
+                payrollService.cancel(payrollId)
         );
     }
 }

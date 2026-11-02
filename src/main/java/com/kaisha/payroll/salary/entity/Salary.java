@@ -1,19 +1,24 @@
 package com.kaisha.payroll.salary.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
+@Setter
 @Entity
 @Table(
         name = "salary",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_salary_employee_period",
+                        name = "uk_salary_company_employee_period",
                         columnNames = {
+                                "company_id",
                                 "employee_id",
                                 "pay_period"
                         }
@@ -67,6 +72,8 @@ public class Salary {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "company_id", nullable = false, length = 100)
+    private String companyId;
     // =====================================================
     // CONSTRUCTORS
     // =====================================================
@@ -98,87 +105,5 @@ public class Salary {
         components.clear();
     }
 
-    // =====================================================
-    // GETTERS / SETTERS
-    // =====================================================
 
-    public Long getSalaryId() {
-        return salaryId;
-    }
-
-    public void setSalaryId(Long salaryId) {
-        this.salaryId = salaryId;
-    }
-
-    public String getEmployeeId() {
-        return employeeId;
-    }
-
-    public void setEmployeeId(String employeeId) {
-        this.employeeId = employeeId;
-    }
-
-    public String getPayPeriod() {
-        return payPeriod;
-    }
-
-    public void setPayPeriod(String payPeriod) {
-        this.payPeriod = payPeriod;
-    }
-
-    public BigDecimal getGrossSalary() {
-        return grossSalary;
-    }
-
-    public void setGrossSalary(BigDecimal grossSalary) {
-        this.grossSalary = grossSalary;
-    }
-
-    public BigDecimal getTotalDeductions() {
-        return totalDeductions;
-    }
-
-    public void setTotalDeductions(
-            BigDecimal totalDeductions) {
-
-        this.totalDeductions = totalDeductions;
-    }
-
-    public BigDecimal getNetSalary() {
-        return netSalary;
-    }
-
-    public void setNetSalary(BigDecimal netSalary) {
-        this.netSalary = netSalary;
-    }
-
-    public List<SalaryComponent> getComponents() {
-        return components;
-    }
-
-    public void setComponents(
-            List<SalaryComponent> components) {
-
-        this.components = components;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(
-            LocalDateTime createdAt) {
-
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(
-            LocalDateTime updatedAt) {
-
-        this.updatedAt = updatedAt;
-    }
 }

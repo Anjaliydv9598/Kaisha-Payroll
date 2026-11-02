@@ -1,6 +1,8 @@
+
 package com.kaisha.payroll.config;
 
 import com.kaisha.payroll.attendance.service.AttendanceService;
+
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,7 @@ public class AttendanceSchedulerConfig {
 
     /*
      * Runs every day at 11:00 PM India time.
+     * Missing punches remain pending for admin review.
      */
     @Scheduled(
             cron = "0 0 23 * * *",
@@ -26,14 +29,13 @@ public class AttendanceSchedulerConfig {
     )
     public void processMissingPunches() {
 
-        int updated =
-                attendanceService
-                        .markMissingPunchesAbsent();
+        int pending =
+                attendanceService.markMissingPunchesAbsent();
 
         System.out.println(
-                "Attendance scheduler completed. " +
-                        "Records marked absent: " +
-                        updated
+                "Attendance scheduler completed. "
+                        + "Missing punch records pending admin review: "
+                        + pending
         );
     }
 }
