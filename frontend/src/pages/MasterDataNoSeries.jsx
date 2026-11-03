@@ -1,9 +1,15 @@
+
 import React, { useEffect, useState } from "react";
 import "./MasterDataNoSeries.css";
 import AdminLayout from "../pages/AdminLayout";
+import { useLocation, useNavigate } from "react-router-dom";
+
 const API_URL = import.meta.env.VITE_API_BASE_URL + "/employee-number-series";
 
 function MasterDataNoSeries() {
+
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const [series, setSeries] = useState([]);
 
@@ -156,6 +162,28 @@ function MasterDataNoSeries() {
         setShowForm(true);
 
     };
+
+
+    // =====================================================
+    // OPEN ADD FORM FROM STAFF ID & PASSWORD
+    // =====================================================
+
+    useEffect(() => {
+
+        if (location.state?.openAddSeries) {
+
+            // Open the existing Add Series form
+            handleAdd();
+
+            // Clear navigation state after opening
+            navigate(location.pathname, {
+                replace: true,
+                state: null
+            });
+
+        }
+
+    }, [location, navigate]);
 
 
     // =====================================================
@@ -754,478 +782,546 @@ function MasterDataNoSeries() {
     return (
         <AdminLayout>
 
-        <div className="master-series-page">
+            <div className="master-series-page">
 
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+                {/* =================================================
+                    HEADER
+                ================================================= */}
 
-            <div className="master-series-header">
+                <div className="master-series-header">
 
-                <div>
+                    <div>
 
-                    <h1>
-                        MASTER DATA NO. SERIES
-                    </h1>
+                        <h1>
+                            MASTER DATA NO. SERIES
+                        </h1>
 
-                    <p>
-                        Manage employee number series
-                    </p>
-
-                </div>
-
-
-                <button
-                    className="add-series-button"
-                    onClick={handleAdd}
-                >
-                    + Add Series
-                </button>
-
-            </div>
-
-
-            {/* =================================================
-                SUCCESS
-            ================================================= */}
-
-            {success && (
-
-                <div className="master-success">
-                    {success}
-                </div>
-
-            )}
-
-
-            {/* =================================================
-                ERROR
-            ================================================= */}
-
-            {error && (
-
-                <div className="master-error">
-                    {error}
-                </div>
-
-            )}
-
-
-            {/* =================================================
-                ADD / EDIT FORM
-            ================================================= */}
-
-            {showForm && (
-
-                <div className="series-form-card">
-
-                    <div className="series-form-header">
-
-                        <div>
-
-                            <h2>
-                                {editingId
-                                    ? "Edit Number Series"
-                                    : "Add Number Series"}
-                            </h2>
-
-                            <p>
-                                Configure the employee ID range.
-                            </p>
-
-                        </div>
-
-
-                        <button
-                            className="close-form-button"
-                            onClick={() => {
-                                setShowForm(false);
-                                resetForm();
-                            }}
-                        >
-                            ×
-                        </button>
+                        <p>
+                            Manage employee number series
+                        </p>
 
                     </div>
 
 
-                    <form
-                        onSubmit={
-                            handleSubmit
-                        }
+                    <button
+                        className="add-series-button"
+                        onClick={handleAdd}
                     >
+                        + Add Series
+                    </button>
 
-                        <div className="series-form-grid">
-
-
-                            {/* DEPARTMENT */}
-
-                            <div className="form-field">
-
-                                <label>
-                                    Department
-                                </label>
-
-                                <input
-                                    name="department"
-                                    value={
-                                        formData.department
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                    placeholder="HR"
-                                />
-
-                            </div>
+                </div>
 
 
-                            {/* PREFIX */}
+                {/* =================================================
+                    SUCCESS
+                ================================================= */}
 
-                            <div className="form-field">
+                {success && (
 
-                                <label>
-                                    Prefix
-                                </label>
+                    <div className="master-success">
+                        {success}
+                    </div>
 
-                                <input
-                                    name="prefix"
-                                    value={
-                                        formData.prefix
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                    placeholder="HR"
-                                />
-
-                            </div>
+                )}
 
 
-                            {/* START */}
+                {/* =================================================
+                    ERROR
+                ================================================= */}
 
-                            <div className="form-field">
+                {error && (
 
-                                <label>
-                                    Starting Number
-                                </label>
+                    <div className="master-error">
+                        {error}
+                    </div>
 
-                                <input
-                                    name="startNumber"
-                                    value={
-                                        formData.startNumber
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                    inputMode="numeric"
-                                    placeholder="001"
-                                />
+                )}
+
+
+                {/* =================================================
+                    ADD / EDIT FORM
+                ================================================= */}
+
+                {showForm && (
+
+                    <div className="series-form-card">
+
+                        <div className="series-form-header">
+
+                            <div>
+
+                                <h2>
+                                    {editingId
+                                        ? "Edit Number Series"
+                                        : "Add Number Series"}
+                                </h2>
+
+                                <p>
+                                    Configure the employee ID range.
+                                </p>
 
                             </div>
 
-
-                            {/* END */}
-
-                            <div className="form-field">
-
-                                <label>
-                                    Ending Number
-                                </label>
-
-                                <input
-                                    name="endNumber"
-                                    value={
-                                        formData.endNumber
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                    inputMode="numeric"
-                                    placeholder="1000"
-                                />
-
-                            </div>
-
-
-                            {/* LENGTH */}
-
-                            <div className="form-field">
-
-                                <label>
-                                    Number Length
-                                </label>
-
-                                <input
-                                    name="numberLength"
-                                    value={
-                                        formData.numberLength
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                />
-
-                            </div>
-
-
-                            {/* STATUS */}
-
-                            <div className="form-field">
-
-                                <label>
-                                    Status
-                                </label>
-
-                                <select
-                                    name="active"
-                                    value={
-                                        formData.active
-                                            ? "true"
-                                            : "false"
-                                    }
-                                    onChange={(e) =>
-                                        setFormData(
-                                            previous => ({
-                                                ...previous,
-                                                active:
-                                                    e.target.value ===
-                                                    "true"
-                                            })
-                                        )
-                                    }
-                                >
-
-                                    <option value="true">
-                                        Active
-                                    </option>
-
-                                    <option value="false">
-                                        Inactive
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-                        </div>
-
-
-                        {/* PREVIEW */}
-
-                        <div className="series-preview">
-
-                            <span>
-                                Preview
-                            </span>
-
-                            <strong>
-                                {getPreview()}
-                            </strong>
-
-                        </div>
-
-
-                        {/* BUTTONS */}
-
-                        <div className="series-form-actions">
 
                             <button
                                 type="button"
-                                className="cancel-series-button"
+                                className="close-form-button"
                                 onClick={() => {
                                     setShowForm(false);
                                     resetForm();
                                 }}
                             >
-                                Cancel
-                            </button>
-
-
-                            <button
-                                type="submit"
-                                className="save-series-button"
-                                disabled={saving}
-                            >
-                                {saving
-                                    ? "Saving..."
-                                    : editingId
-                                        ? "Update Series"
-                                        : "Save Series"}
+                                ×
                             </button>
 
                         </div>
 
-                    </form>
 
-                </div>
-
-            )}
-
-
-            {/* =================================================
-                SERIES LIST
-            ================================================= */}
-
-            <div className="series-section">
-
-                <div className="section-heading">
-
-                    <h2>
-                        Employee Number Series
-                    </h2>
-
-                    <span>
-                        {series.length} series
-                    </span>
-
-                </div>
-
-
-                {loading ? (
-
-                    <div className="series-empty">
-                        Loading number series...
-                    </div>
-
-                ) : series.length === 0 ? (
-
-                    <div className="series-empty">
-
-                        <div className="empty-icon">
-                            #
-                        </div>
-
-                        <h3>
-                            No number series configured
-                        </h3>
-
-                        <p>
-                            Add a department number series
-                            to start generating employee IDs.
-                        </p>
-
-                        <button
-                            className="add-series-button"
-                            onClick={handleAdd}
+                        <form
+                            onSubmit={
+                                handleSubmit
+                            }
                         >
-                            + Add Series
-                        </button>
 
-                    </div>
-
-                ) : (
-
-                    <div className="series-grid">
-
-                        {series.map((item) => (
-
-                            <div
-                                className="series-card"
-                                key={item.id}
-                            >
-
-                                {/* CARD HEADER */}
-
-                                <div className="series-card-header">
-
-                                    <div>
-
-                                        <h3>
-                                            {item.department}
-                                        </h3>
-
-                                        <span className="prefix-badge">
-                                            {item.prefix}
-                                        </span>
-
-                                    </div>
+                            <div className="series-form-grid">
 
 
-                                    <div className="series-card-actions">
+                                {/* DEPARTMENT */}
 
-                                        <button
-                                            className="edit-series-button"
-                                            onClick={() =>
-                                                handleEdit(item)
-                                            }
-                                        >
-                                            Edit
-                                        </button>
+                                <div className="form-field">
 
+                                    <label>
+                                        Department
+                                    </label>
 
-                                        <button
-                                            className="delete-series-button"
-                                            onClick={() =>
-                                                handleDeleteClick(item)
-                                            }
-                                        >
-                                            Delete
-                                        </button>
-
-                                    </div>
+                                    <input
+                                        name="department"
+                                        value={
+                                            formData.department
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        placeholder="HR"
+                                    />
 
                                 </div>
 
 
-                                {/* DETAILS */}
+                                {/* PREFIX */}
 
-                                <div className="series-details">
+                                <div className="form-field">
+
+                                    <label>
+                                        Prefix
+                                    </label>
+
+                                    <input
+                                        name="prefix"
+                                        value={
+                                            formData.prefix
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        placeholder="HR"
+                                    />
+
+                                </div>
 
 
-                                    <div className="series-detail">
+                                {/* START */}
 
-                                        <span>
-                                            Department
-                                        </span>
+                                <div className="form-field">
 
-                                        <strong>
-                                            {item.department}
-                                        </strong>
+                                    <label>
+                                        Starting Number
+                                    </label>
+
+                                    <input
+                                        name="startNumber"
+                                        value={
+                                            formData.startNumber
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        inputMode="numeric"
+                                        placeholder="001"
+                                    />
+
+                                </div>
+
+
+                                {/* END */}
+
+                                <div className="form-field">
+
+                                    <label>
+                                        Ending Number
+                                    </label>
+
+                                    <input
+                                        name="endNumber"
+                                        value={
+                                            formData.endNumber
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        inputMode="numeric"
+                                        placeholder="1000"
+                                    />
+
+                                </div>
+
+
+                                {/* LENGTH */}
+
+                                <div className="form-field">
+
+                                    <label>
+                                        Number Length
+                                    </label>
+
+                                    <input
+                                        name="numberLength"
+                                        value={
+                                            formData.numberLength
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                    />
+
+                                </div>
+
+
+                                {/* STATUS */}
+
+                                <div className="form-field">
+
+                                    <label>
+                                        Status
+                                    </label>
+
+                                    <select
+                                        name="active"
+                                        value={
+                                            formData.active
+                                                ? "true"
+                                                : "false"
+                                        }
+                                        onChange={(e) =>
+                                            setFormData(
+                                                previous => ({
+                                                    ...previous,
+                                                    active:
+                                                        e.target.value ===
+                                                        "true"
+                                                })
+                                            )
+                                        }
+                                    >
+
+                                        <option value="true">
+                                            Active
+                                        </option>
+
+                                        <option value="false">
+                                            Inactive
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+
+                            {/* PREVIEW */}
+
+                            <div className="series-preview">
+
+                                <span>
+                                    Preview
+                                </span>
+
+                                <strong>
+                                    {getPreview()}
+                                </strong>
+
+                            </div>
+
+
+                            {/* BUTTONS */}
+
+                            <div className="series-form-actions">
+
+                                <button
+                                    type="button"
+                                    className="cancel-series-button"
+                                    onClick={() => {
+                                        setShowForm(false);
+                                        resetForm();
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+
+
+                                <button
+                                    type="submit"
+                                    className="save-series-button"
+                                    disabled={saving}
+                                >
+                                    {saving
+                                        ? "Saving..."
+                                        : editingId
+                                            ? "Update Series"
+                                            : "Save Series"}
+                                </button>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                )}
+
+
+                {/* =================================================
+                    SERIES LIST
+                ================================================= */}
+
+                <div className="series-section">
+
+                    <div className="section-heading">
+
+                        <h2>
+                            Employee Number Series
+                        </h2>
+
+                        <span>
+                            {series.length} series
+                        </span>
+
+                    </div>
+
+
+                    {loading ? (
+
+                        <div className="series-empty">
+                            Loading number series...
+                        </div>
+
+                    ) : series.length === 0 ? (
+
+                        <div className="series-empty">
+
+                            <div className="empty-icon">
+                                #
+                            </div>
+
+                            <h3>
+                                No number series configured
+                            </h3>
+
+                            <p>
+                                Add a department number series
+                                to start generating employee IDs.
+                            </p>
+
+                            <button
+                                className="add-series-button"
+                                onClick={handleAdd}
+                            >
+                                + Add Series
+                            </button>
+
+                        </div>
+
+                    ) : (
+
+                        <div className="series-grid">
+
+                            {series.map((item) => (
+
+                                <div
+                                    className="series-card"
+                                    key={item.id}
+                                >
+
+                                    {/* CARD HEADER */}
+
+                                    <div className="series-card-header">
+
+                                        <div>
+
+                                            <h3>
+                                                {item.department}
+                                            </h3>
+
+                                            <span className="prefix-badge">
+                                                {item.prefix}
+                                            </span>
+
+                                        </div>
+
+
+                                        <div className="series-card-actions">
+
+                                            <button
+                                                className="edit-series-button"
+                                                onClick={() =>
+                                                    handleEdit(item)
+                                                }
+                                            >
+                                                Edit
+                                            </button>
+
+
+                                            <button
+                                                className="delete-series-button"
+                                                onClick={() =>
+                                                    handleDeleteClick(item)
+                                                }
+                                            >
+                                                Delete
+                                            </button>
+
+                                        </div>
 
                                     </div>
 
 
-                                    <div className="series-detail">
+                                    {/* DETAILS */}
+
+                                    <div className="series-details">
+
+
+                                        <div className="series-detail">
+
+                                            <span>
+                                                Department
+                                            </span>
+
+                                            <strong>
+                                                {item.department}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <div className="series-detail">
+
+                                            <span>
+                                                Prefix
+                                            </span>
+
+                                            <strong>
+                                                {item.prefix}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <div className="series-detail">
+
+                                            <span>
+                                                Starting Number
+                                            </span>
+
+                                            <strong>
+                                                {displayNumber(
+                                                    item.startNumber,
+                                                    item.numberLength
+                                                )}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <div className="series-detail">
+
+                                            <span>
+                                                Ending Number
+                                            </span>
+
+                                            <strong>
+                                                {displayNumber(
+                                                    item.endNumber,
+                                                    item.numberLength
+                                                )}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <div className="series-detail next-id-detail">
+
+                                            <span>
+                                                Next ID
+                                            </span>
+
+                                            <strong>
+                                                {getNextId(item)}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <div className="series-detail">
+
+                                            <span>
+                                                Status
+                                            </span>
+
+                                            <strong
+                                                className={
+                                                    item.active
+                                                        ? "status-active"
+                                                        : "status-inactive"
+                                                }
+                                            >
+
+                                                <span className="status-dot">
+                                                    ●
+                                                </span>
+
+                                                {item.active
+                                                    ? "Active"
+                                                    : "Inactive"}
+
+                                            </strong>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {/* PREVIEW */}
+
+                                    <div className="card-preview">
 
                                         <span>
-                                            Prefix
+                                            Preview
                                         </span>
 
                                         <strong>
                                             {item.prefix}
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div className="series-detail">
-
-                                        <span>
-                                            Starting Number
-                                        </span>
-
-                                        <strong>
                                             {displayNumber(
                                                 item.startNumber,
                                                 item.numberLength
                                             )}
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div className="series-detail">
-
-                                        <span>
-                                            Ending Number
-                                        </span>
-
-                                        <strong>
+                                            {" → "}
+                                            {item.prefix}
                                             {displayNumber(
                                                 item.endNumber,
                                                 item.numberLength
@@ -1234,168 +1330,102 @@ function MasterDataNoSeries() {
 
                                     </div>
 
+                                </div>
 
-                                    <div className="series-detail next-id-detail">
+                            ))}
 
-                                        <span>
-                                            Next ID
-                                        </span>
+                        </div>
 
-                                        <strong>
-                                            {getNextId(item)}
-                                        </strong>
+                    )}
 
-                                    </div>
+                </div>
 
 
-                                    <div className="series-detail">
+                {/* =================================================
+                    DELETE MODAL
+                ================================================= */}
 
-                                        <span>
-                                            Status
-                                        </span>
+                {showDeleteModal &&
+                    deleteTarget && (
 
-                                        <strong
-                                            className={
-                                                item.active
-                                                    ? "status-active"
-                                                    : "status-inactive"
-                                            }
-                                        >
+                        <div className="delete-overlay">
 
-                                            <span className="status-dot">
-                                                ●
-                                            </span>
+                            <div className="delete-modal">
 
-                                            {item.active
-                                                ? "Active"
-                                                : "Inactive"}
-
-                                        </strong>
-
-                                    </div>
-
+                                <div className="delete-icon">
+                                    !
                                 </div>
 
 
-                                {/* PREVIEW */}
+                                <h2>
+                                    Delete Number Series?
+                                </h2>
 
-                                <div className="card-preview">
 
-                                    <span>
-                                        Preview
-                                    </span>
+                                <p>
+                                    Are you sure you want to delete
+                                    the following number series?
+                                </p>
+
+
+                                <div className="delete-summary">
 
                                     <strong>
-                                        {item.prefix}
+                                        {deleteTarget.department}
+                                    </strong>
+
+                                    <span>
+                                        {deleteTarget.prefix}
                                         {displayNumber(
-                                            item.startNumber,
-                                            item.numberLength
+                                            deleteTarget.startNumber,
+                                            deleteTarget.numberLength
                                         )}
                                         {" → "}
-                                        {item.prefix}
+                                        {deleteTarget.prefix}
                                         {displayNumber(
-                                            item.endNumber,
-                                            item.numberLength
+                                            deleteTarget.endNumber,
+                                            deleteTarget.numberLength
                                         )}
-                                    </strong>
+                                    </span>
 
                                 </div>
 
-                            </div>
 
-                        ))}
+                                <div className="delete-actions">
 
-                    </div>
-
-                )}
-
-            </div>
-
-
-            {/* =================================================
-                DELETE MODAL
-            ================================================= */}
-
-            {showDeleteModal &&
-                deleteTarget && (
-
-                    <div className="delete-overlay">
-
-                        <div className="delete-modal">
-
-                            <div className="delete-icon">
-                                !
-                            </div>
+                                    <button
+                                        className="cancel-delete-button"
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setDeleteTarget(null);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
 
 
-                            <h2>
-                                Delete Number Series?
-                            </h2>
+                                    <button
+                                        className="confirm-delete-button"
+                                        onClick={
+                                            handleDelete
+                                        }
+                                        disabled={saving}
+                                    >
+                                        {saving
+                                            ? "Deleting..."
+                                            : "Delete"}
+                                    </button>
 
-
-                            <p>
-                                Are you sure you want to delete
-                                the following number series?
-                            </p>
-
-
-                            <div className="delete-summary">
-
-                                <strong>
-                                    {deleteTarget.department}
-                                </strong>
-
-                                <span>
-                                {deleteTarget.prefix}
-                                    {displayNumber(
-                                        deleteTarget.startNumber,
-                                        deleteTarget.numberLength
-                                    )}
-                                    {" → "}
-                                    {deleteTarget.prefix}
-                                    {displayNumber(
-                                        deleteTarget.endNumber,
-                                        deleteTarget.numberLength
-                                    )}
-                            </span>
-
-                            </div>
-
-
-                            <div className="delete-actions">
-
-                                <button
-                                    className="cancel-delete-button"
-                                    onClick={() => {
-                                        setShowDeleteModal(false);
-                                        setDeleteTarget(null);
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-
-
-                                <button
-                                    className="confirm-delete-button"
-                                    onClick={
-                                        handleDelete
-                                    }
-                                    disabled={saving}
-                                >
-                                    {saving
-                                        ? "Deleting..."
-                                        : "Delete"}
-                                </button>
+                                </div>
 
                             </div>
 
                         </div>
 
-                    </div>
+                    )}
 
-                )}
+            </div>
 
-        </div>
         </AdminLayout>
     );
 
