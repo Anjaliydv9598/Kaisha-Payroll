@@ -1,12 +1,17 @@
+
 import React, { useEffect, useState } from "react";
 import "./StaffIdPassword.css";
 import AdminLayout from "../pages/AdminLayout";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const STAFF_API = `${API_BASE_URL}/auth/staff`;
 
 const getToken = () => localStorage.getItem("token");
 
 const StaffIdPassword = () => {
-    const [staff, setStaff] = useState([]);
+
+    const [employees, setEmployees] = useState([]);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -14,6 +19,7 @@ const StaffIdPassword = () => {
     const [showForm, setShowForm] = useState(false);
 
     const [formData, setFormData] = useState({
+        employeeId: "",
         username: "",
         email: "",
         mobileNumber: "",
@@ -24,41 +30,60 @@ const StaffIdPassword = () => {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    const loadStaff = async () => {
+    // ==========================================
+    // 1. LOAD EMPLOYEES
+    // ==========================================
+
+    const loadEmployees = async () => {
+
         try {
             setLoading(true);
 
             const response = await fetch(
-                `${API_BASE_URL}/auth/staff`,
+                `${STAFF_API}/employees`,
                 {
+                    method: "GET",
                     headers: {
                         Authorization: `Bearer ${getToken()}`,
                     },
                 }
             );
 
+            const data = await response.json().catch(() => []);
+
             if (!response.ok) {
-                throw new Error("Unable to load staff accounts.");
+                throw new Error(
+                    data.message || "Unable to load employees."
+                );
             }
 
-            const data = await response.json();
+            setEmployees(Array.isArray(data) ? data : []);
 
-            setStaff(Array.isArray(data) ? data : []);
+            setError("");
+
         } catch (err) {
+
             setError(
-                err.message ||
-                "Unable to load staff accounts."
+                err.message || "Unable to load employees."
             );
+
         } finally {
+
             setLoading(false);
+
         }
     };
 
     useEffect(() => {
-        loadStaff();
+        loadEmployees();
     }, []);
 
+    // ==========================================
+    // 2. HANDLE FORM INPUT
+    // ==========================================
+
     const handleChange = (event) => {
+
         const { name, value } = event.target;
 
         setFormData((previous) => ({
@@ -67,8 +92,14 @@ const StaffIdPassword = () => {
         }));
     };
 
+    // ==========================================
+    // 3. RESET FORM
+    // ==========================================
+
     const resetForm = () => {
+
         setFormData({
+            employeeId: "",
             username: "",
             email: "",
             mobileNumber: "",
@@ -77,18 +108,39 @@ const StaffIdPassword = () => {
         });
 
         setError("");
-        setSuccess("");
     };
 
+    // ==========================================
+    // 4. OPEN CREATE STAFF FORM
+    // ==========================================
+
+    const openCreateForm = () => {
+
+        resetForm();
+        setSuccess("");
+        setShowForm(true);
+    };
+
+    // ==========================================
+    // 5. CREATE STAFF LOGIN
+    // ==========================================
+
     const handleCreateStaff = async (event) => {
+
         event.preventDefault();
 
         setError("");
         setSuccess("");
 
+        if (!formData.employeeId) {
+            setError("Please select an employee.");
+            return;
+        }
+
         if (
-            !formData.username ||
-            !formData.email ||
+            !formData.username.trim() ||
+            !formData.email.trim() ||
+            !formData.mobileNumber.trim() ||
             !formData.password ||
             !formData.confirmPassword
         ) {
@@ -102,23 +154,33 @@ const StaffIdPassword = () => {
         }
 
         try {
+
             setSaving(true);
 
             const response = await fetch(
-                `${API_BASE_URL}/auth/staff`,
+                STAFF_API,
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${getToken()}`,
                     },
+
                     body: JSON.stringify({
-                        username: formData.username,
-                        email: formData.email,
-                        mobileNumber: formData.mobileNumber,
+
+                        employeeId: formData.employeeId,
+
+                        username: formData.username.trim(),
+
+                        email: formData.email.trim(),
+
+                        mobileNumber: formData.mobileNumber.trim(),
+
                         password: formData.password,
+
                         confirmPassword: formData.confirmPassword,
-                        role: "STAFF",
+
                     }),
                 }
             );
@@ -126,315 +188,450 @@ const StaffIdPassword = () => {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
+
                 throw new Error(
                     data.message ||
+                    data.detail ||
                     "Unable to create staff account."
                 );
             }
 
-            setSuccess(
-                "Staff account created successfully."
-            );
+            setSuccess("Staff login created successfully.");
 
             resetForm();
+
             setShowForm(false);
 
-            await loadStaff();
+            // Refresh employee login status
+            await loadEmployees();
+
         } catch (err) {
+
             setError(
                 err.message ||
                 "Unable to create staff account."
             );
+
         } finally {
+
             setSaving(false);
+
         }
     };
 
+    // ==========================================
+    // 6. AVAILABLE EMPLOYEES
+    // ==========================================
+
+    const availableEmployees = employees.filter(
+        (employee) => !employee.hasLogin
+    );
+
+    const createdCount = employees.filter(
+        (employee) => employee.hasLogin
+    ).length;
+
+    // ==========================================
+    // 7. UI
+    // ==========================================
+
     return (
+
         <AdminLayout>
-        <div className="staff-page">
 
-            <div className="staff-header">
+            <div className="staff-page">
 
-                <div>
-                    <h1>Staff ID & Password</h1>
+                {/* PAGE HEADER */}
 
-                    <p>
-                        Create staff ID, password & reset password.
-                    </p>
-                </div>
+                <div className="staff-header">
 
-                <button
-                    className="staff-add-button"
-                    onClick={() => {
-                        resetForm();
-                        setShowForm(true);
-                    }}
-                >
-                    + Create Staff
-                </button>
-
-            </div>
-
-            {success && (
-                <div className="staff-success">
-                    {success}
-                </div>
-            )}
-
-            {error && !showForm && (
-                <div className="staff-error">
-                    {error}
-                </div>
-            )}
-
-            <div className="staff-card">
-
-                <div className="staff-card-header">
                     <div>
-                        <h2>Staff Accounts</h2>
+
+                        <h1>Staff ID & Password</h1>
+
                         <p>
-                            Manage staff login accounts.
+                            Connect existing employees with staff login accounts.
                         </p>
+
                     </div>
 
-                    <span>
-                        {staff.length} accounts
-                    </span>
+                    <button
+                        type="button"
+                        className="staff-add-button"
+                        onClick={openCreateForm}
+                    >
+                        + Create Staff
+                    </button>
+
                 </div>
 
-                {loading ? (
-                    <div className="staff-state">
-                        Loading staff accounts...
+                {/* SUCCESS MESSAGE */}
+
+                {success && (
+                    <div className="staff-success">
+                        {success}
                     </div>
-                ) : staff.length === 0 ? (
-                    <div className="staff-state">
-                        No staff accounts found.
+                )}
+
+                {/* ERROR MESSAGE */}
+
+                {error && !showForm && (
+                    <div className="staff-error">
+                        {error}
                     </div>
-                ) : (
-                    <div className="staff-table-wrapper">
+                )}
 
-                        <table className="staff-table">
+                {/* EMPLOYEE ACCOUNT CARD */}
 
-                            <thead>
-                            <tr>
-                                <th>Staff ID</th>
-                                <th>Email</th>
-                                <th>Mobile</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                            </thead>
+                <div className="staff-card">
 
-                            <tbody>
+                    <div className="staff-card-header">
 
-                            {staff.map((item) => (
-                                <tr key={item.id || item.username}>
+                        <div>
 
-                                    <td>
-                                        <strong>
-                                            {item.username}
-                                        </strong>
-                                    </td>
+                            <h2>Employee Login Accounts</h2>
 
-                                    <td>
-                                        {item.email || "-"}
-                                    </td>
+                            <p>
+                                Manage login access for existing employees.
+                            </p>
 
-                                    <td>
-                                        {item.mobileNumber || "-"}
-                                    </td>
+                        </div>
 
-                                    <td>
-                                            <span className="staff-role">
-                                                STAFF
-                                            </span>
-                                    </td>
+                        <span>
+                            {createdCount} / {employees.length} created
+                        </span>
 
-                                    <td>
-                                            <span
-                                                className={
-                                                    item.active
-                                                        ? "staff-status active"
-                                                        : "staff-status inactive"
-                                                }
-                                            >
-                                                {item.active
-                                                    ? "Active"
-                                                    : "Inactive"}
-                                            </span>
-                                    </td>
+                    </div>
 
-                                    <td>
-                                        <button
-                                            className="staff-reset-button"
-                                            type="button"
-                                        >
-                                            Reset Password
-                                        </button>
-                                    </td>
+                    {/* LOADING */}
 
+                    {loading ? (
+
+                        <div className="staff-state">
+                            Loading employees...
+                        </div>
+
+                    ) : employees.length === 0 ? (
+
+                        <div className="staff-state">
+                            No active employees found.
+                        </div>
+
+                    ) : (
+
+                        <div className="staff-table-wrapper">
+
+                            <table className="staff-table">
+
+                                <thead>
+
+                                <tr>
+                                    <th>Employee ID</th>
+                                    <th>Login Status</th>
+                                    <th>Action</th>
                                 </tr>
-                            ))}
 
-                            </tbody>
+                                </thead>
 
-                        </table>
+                                <tbody>
+
+                                {employees.map((employee) => (
+
+                                    <tr key={employee.id}>
+
+                                        <td>
+                                            <strong>
+                                                {employee.employeeId}
+                                            </strong>
+                                        </td>
+
+                                        <td>
+
+                                                <span
+                                                    className={
+                                                        employee.hasLogin
+                                                            ? "staff-status active"
+                                                            : "staff-status inactive"
+                                                    }
+                                                >
+
+                                                    {employee.hasLogin
+                                                        ? "Already Created"
+                                                        : "Not Created"}
+
+                                                </span>
+
+                                        </td>
+
+                                        <td>
+
+                                            {employee.hasLogin ? (
+
+                                                <span className="staff-role">
+                                                        Login Exists
+                                                    </span>
+
+                                            ) : (
+
+                                                <button
+                                                    type="button"
+                                                    className="staff-reset-button"
+                                                    onClick={() => {
+                                                        resetForm();
+
+                                                        setFormData((previous) => ({
+                                                            ...previous,
+                                                            employeeId: employee.employeeId,
+                                                        }));
+
+                                                        setShowForm(true);
+                                                    }}
+                                                >
+                                                    Create Staff
+                                                </button>
+
+                                            )}
+
+                                        </td>
+
+                                    </tr>
+
+                                ))}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    )}
+
+                </div>
+
+                {/* CREATE STAFF MODAL */}
+
+                {showForm && (
+
+                    <div className="staff-modal-overlay">
+
+                        <div className="staff-modal">
+
+                            <div className="staff-modal-header">
+
+                                <div>
+
+                                    <h2>Create Staff Account</h2>
+
+                                    <p>
+                                        Create login credentials for an existing employee.
+                                    </p>
+
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="staff-close-button"
+                                    onClick={() => {
+                                        setShowForm(false);
+                                        resetForm();
+                                    }}
+                                >
+                                    ×
+                                </button>
+
+                            </div>
+
+                            <form
+                                className="staff-form"
+                                onSubmit={handleCreateStaff}
+                            >
+
+                                {error && (
+
+                                    <div className="staff-form-error">
+                                        {error}
+                                    </div>
+
+                                )}
+
+                                <div className="staff-form-grid">
+
+                                    {/* EMPLOYEE DROPDOWN */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Select Employee *
+                                        </label>
+
+                                        <select
+                                            name="employeeId"
+                                            value={formData.employeeId}
+                                            onChange={handleChange}
+                                            required
+                                        >
+
+                                            <option value="">
+                                                Select Employee ID
+                                            </option>
+
+                                            {availableEmployees.map((employee) => (
+
+                                                <option
+                                                    key={employee.id}
+                                                    value={employee.employeeId}
+                                                >
+                                                    {employee.employeeId}
+                                                </option>
+
+                                            ))}
+
+                                        </select>
+
+                                    </div>
+
+                                    {/* USERNAME */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Username *
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="username"
+                                            value={formData.username}
+                                            onChange={handleChange}
+                                            placeholder="Enter username"
+                                            required
+                                        />
+
+                                    </div>
+
+                                    {/* EMAIL */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Email *
+                                        </label>
+
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            placeholder="Enter staff email"
+                                            required
+                                        />
+
+                                    </div>
+
+                                    {/* MOBILE */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Mobile Number *
+                                        </label>
+
+                                        <input
+                                            type="tel"
+                                            name="mobileNumber"
+                                            value={formData.mobileNumber}
+                                            onChange={handleChange}
+                                            placeholder="Enter mobile number"
+                                            required
+                                        />
+
+                                    </div>
+
+                                    {/* PASSWORD */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Password *
+                                        </label>
+
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            placeholder="Enter password"
+                                            required
+                                        />
+
+                                    </div>
+
+                                    {/* CONFIRM PASSWORD */}
+
+                                    <div className="staff-field">
+
+                                        <label>
+                                            Confirm Password *
+                                        </label>
+
+                                        <input
+                                            type="password"
+                                            name="confirmPassword"
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
+                                            placeholder="Confirm password"
+                                            required
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                                {/* FORM ACTIONS */}
+
+                                <div className="staff-form-actions">
+
+                                    <button
+                                        type="button"
+                                        className="staff-cancel-button"
+                                        onClick={() => {
+                                            setShowForm(false);
+                                            resetForm();
+                                        }}
+                                        disabled={saving}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className="staff-save-button"
+                                        disabled={
+                                            saving ||
+                                            availableEmployees.length === 0
+                                        }
+                                    >
+
+                                        {saving
+                                            ? "Creating..."
+                                            : "Create Staff"}
+
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+                        </div>
 
                     </div>
+
                 )}
 
             </div>
 
-            {showForm && (
-                <div className="staff-modal-overlay">
-
-                    <div className="staff-modal">
-
-                        <div className="staff-modal-header">
-
-                            <div>
-                                <h2>Create Staff Account</h2>
-
-                                <p>
-                                    Create a new STAFF login account.
-                                </p>
-                            </div>
-
-                            <button
-                                className="staff-close-button"
-                                onClick={() => setShowForm(false)}
-                            >
-                                ×
-                            </button>
-
-                        </div>
-
-                        <form
-                            className="staff-form"
-                            onSubmit={handleCreateStaff}
-                        >
-
-                            {error && (
-                                <div className="staff-form-error">
-                                    {error}
-                                </div>
-                            )}
-
-                            <div className="staff-form-grid">
-
-                                <div className="staff-field">
-
-                                    <label>
-                                        Staff ID *
-                                    </label>
-
-                                    <input
-                                        name="username"
-                                        value={formData.username}
-                                        onChange={handleChange}
-                                        placeholder="Enter staff ID"
-                                    />
-
-                                </div>
-
-                                <div className="staff-field">
-
-                                    <label>
-                                        Email *
-                                    </label>
-
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        placeholder="Enter staff email"
-                                    />
-
-                                </div>
-
-                                <div className="staff-field">
-
-                                    <label>
-                                        Mobile Number
-                                    </label>
-
-                                    <input
-                                        name="mobileNumber"
-                                        value={formData.mobileNumber}
-                                        onChange={handleChange}
-                                        placeholder="Enter mobile number"
-                                    />
-
-                                </div>
-
-                                <div className="staff-field">
-
-                                    <label>
-                                        Password *
-                                    </label>
-
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        placeholder="Enter password"
-                                    />
-
-                                </div>
-
-                                <div className="staff-field">
-
-                                    <label>
-                                        Confirm Password *
-                                    </label>
-
-                                    <input
-                                        type="password"
-                                        name="confirmPassword"
-                                        value={formData.confirmPassword}
-                                        onChange={handleChange}
-                                        placeholder="Confirm password"
-                                    />
-
-                                </div>
-
-                            </div>
-
-                            <div className="staff-form-actions">
-
-                                <button
-                                    type="button"
-                                    className="staff-cancel-button"
-                                    onClick={() => setShowForm(false)}
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="staff-save-button"
-                                    disabled={saving}
-                                >
-                                    {saving
-                                        ? "Creating..."
-                                        : "Create Staff"}
-                                </button>
-
-                            </div>
-
-                        </form>
-
-                    </div>
-
-                </div>
-            )}
-
-        </div>
         </AdminLayout>
+
     );
 };
 
