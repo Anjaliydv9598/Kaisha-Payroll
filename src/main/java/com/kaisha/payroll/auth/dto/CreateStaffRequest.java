@@ -8,16 +8,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class CreateStaffRequest {
-
     private String employeeId;
-
-    private String username;
-
-    private String email;
-
-    private String mobileNumber;
-
     private String password;
-
     private String confirmPassword;
 }

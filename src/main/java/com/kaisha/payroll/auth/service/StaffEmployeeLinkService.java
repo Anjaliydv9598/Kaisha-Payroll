@@ -1,3 +1,4 @@
+
 package com.kaisha.payroll.auth.service;
 
 import com.kaisha.payroll.auth.dto.CreateStaffRequest;
@@ -5,8 +6,11 @@ import com.kaisha.payroll.auth.dto.StaffEmployeeResponse;
 import com.kaisha.payroll.auth.entity.Role;
 import com.kaisha.payroll.auth.entity.User;
 import com.kaisha.payroll.auth.repository.UserRepository;
+
 import com.kaisha.payroll.employee.entity.Employee;
+import com.kaisha.payroll.employee.entity.EmployeeField;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
+import com.kaisha.payroll.employee.repository.EmployeeFieldRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,25 +19,29 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class StaffEmployeeLinkService {
 
     private final EmployeeRepository employeeRepository;
+    private final EmployeeFieldRepository employeeFieldRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public StaffEmployeeLinkService(
             EmployeeRepository employeeRepository,
+            EmployeeFieldRepository employeeFieldRepository,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.employeeRepository = employeeRepository;
+        this.employeeFieldRepository = employeeFieldRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Fetch active employees and their login status
+    // Get active employees with their existing details and login status
     @Transactional(readOnly = true)
     public List<StaffEmployeeResponse> getEmployees(String companyId) {
 
@@ -44,15 +52,55 @@ public class StaffEmployeeLinkService {
                         );
 
         return employees.stream()
-                .map(employee -> new StaffEmployeeResponse(
-                        employee.getId(),
-                        employee.getEmployeeId(),
-                        userRepository.existsByEmployee_Id(employee.getId())
-                ))
+                .map(employee -> {
+
+                    List<EmployeeField> fields =
+                            employeeFieldRepository
+                                    .findByEmployee_IdOrderByFieldIdAsc(
+                                            employee.getId()
+                                    );
+
+                    String employeeName = getFieldValue(
+                            fields,
+                            "fullname",
+                            "name",
+                            "employeename"
+                    );
+
+                    String email = getFieldValue(
+                            fields,
+                            "email",
+                            "emailid",
+                            "emailaddress"
+                    );
+
+                    String mobileNumber = getFieldValue(
+                            fields,
+                            "phone",
+                            "phonenumber",
+                            "mobile",
+                            "mobilenumber",
+                            "contactnumber"
+                    );
+
+                    boolean hasLogin =
+                            userRepository.existsByEmployee_Id(
+                                    employee.getId()
+                            );
+
+                    return new StaffEmployeeResponse(
+                            employee.getId(),
+                            employee.getEmployeeId(),
+                            employeeName,
+                            email,
+                            mobileNumber,
+                            hasLogin
+                    );
+                })
                 .toList();
     }
 
-    // Create Staff Login for an existing employee
+    // Create login credentials for an existing employee
     @Transactional
     public void createStaffLogin(
             CreateStaffRequest request,
@@ -74,9 +122,6 @@ public class StaffEmployeeLinkService {
         }
 
         String employeeId = request.getEmployeeId();
-        String username = request.getUsername();
-        String email = request.getEmail();
-        String mobileNumber = request.getMobileNumber();
         String password = request.getPassword();
         String confirmPassword = request.getConfirmPassword();
 
@@ -87,31 +132,17 @@ public class StaffEmployeeLinkService {
             );
         }
 
-        if (username == null || username.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Username is required"
-            );
-        }
-
-        if (email == null || email.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Email is required"
-            );
-        }
-
-        if (mobileNumber == null || mobileNumber.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Mobile number is required"
-            );
-        }
-
         if (password == null || password.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Password is required"
+            );
+        }
+
+        if (confirmPassword == null || confirmPassword.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Confirm password is required"
             );
         }
 
@@ -123,11 +154,8 @@ public class StaffEmployeeLinkService {
         }
 
         employeeId = employeeId.trim();
-        username = username.trim();
-        email = email.trim();
-        mobileNumber = mobileNumber.trim();
 
-        // Find active employee within the ADMIN's company
+        // Find existing employee within the ADMIN's company
         Employee employee = employeeRepository
                 .findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
                         employeeId,
@@ -138,7 +166,7 @@ public class StaffEmployeeLinkService {
                         "Active employee not found in your company"
                 ));
 
-        // Prevent duplicate login for the same employee
+        // Prevent duplicate staff login
         if (userRepository.existsByEmployee_Id(employee.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -146,29 +174,56 @@ public class StaffEmployeeLinkService {
             );
         }
 
-        // Validate unique login details
+        // Fetch existing employee details
+        List<EmployeeField> fields =
+                employeeFieldRepository
+                        .findByEmployee_IdOrderByFieldIdAsc(
+                                employee.getId()
+                        );
+
+        String email = getFieldValue(
+                fields,
+                "email",
+                "emailid",
+                "emailaddress"
+        );
+
+        String mobileNumber = getFieldValue(
+                fields,
+                "phone",
+                "phonenumber",
+                "mobile",
+                "mobilenumber",
+                "contactnumber"
+        );
+
+        // Employee ID automatically becomes username
+        String username = employee.getEmployeeId();
+
         if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Username already exists"
+                    "Username already exists: " + username
             );
         }
 
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (email != null
+                && userRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Email already exists"
+                    "Employee email is already used"
             );
         }
 
-        if (userRepository.existsByMobileNumber(mobileNumber)) {
+        if (mobileNumber != null
+                && userRepository.existsByMobileNumber(mobileNumber)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Mobile number already exists"
+                    "Employee mobile number is already used"
             );
         }
 
-        // Create User account linked to the existing Employee
+        // Create User only. Do not create another Employee.
         User user = new User();
 
         user.setUsername(username);
@@ -182,5 +237,48 @@ public class StaffEmployeeLinkService {
         user.setActive(true);
 
         userRepository.save(user);
+    }
+
+    // Retrieve employee details from EmployeeField
+    private String getFieldValue(
+            List<EmployeeField> fields,
+            String... possibleNames
+    ) {
+
+        for (String possibleName : possibleNames) {
+
+            String expectedName = normalize(possibleName);
+
+            for (EmployeeField field : fields) {
+
+                if (field.getFieldName() == null) {
+                    continue;
+                }
+
+                String actualName = normalize(field.getFieldName());
+
+                if (actualName.equals(expectedName)) {
+
+                    String value = field.getFieldValue();
+
+                    if (value != null && !value.isBlank()) {
+                        return value.trim();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String normalize(String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+        return value
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 }
