@@ -2,17 +2,18 @@
 import React, { useEffect, useState } from "react";
 import "./StaffIdPassword.css";
 import AdminLayout from "../pages/AdminLayout";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 const STAFF_API = `${API_BASE_URL}/auth/staff`;
 
 const getToken = () => localStorage.getItem("token");
 
 const StaffIdPassword = () => {
 
-    const [employees, setEmployees] = useState([]);
+    const navigate = useNavigate();
 
+    const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -58,7 +59,6 @@ const StaffIdPassword = () => {
             }
 
             setEmployees(Array.isArray(data) ? data : []);
-
             setError("");
 
         } catch (err) {
@@ -111,14 +111,17 @@ const StaffIdPassword = () => {
     };
 
     // ==========================================
-    // 4. OPEN CREATE STAFF FORM
+    // 4. NAVIGATE TO MASTER DATA
     // ==========================================
 
     const openCreateForm = () => {
 
-        resetForm();
-        setSuccess("");
-        setShowForm(true);
+        navigate("/admin/master-data", {
+            state: {
+                openAddSeries: true
+            }
+        });
+
     };
 
     // ==========================================
@@ -170,15 +173,10 @@ const StaffIdPassword = () => {
                     body: JSON.stringify({
 
                         employeeId: formData.employeeId,
-
                         username: formData.username.trim(),
-
                         email: formData.email.trim(),
-
                         mobileNumber: formData.mobileNumber.trim(),
-
                         password: formData.password,
-
                         confirmPassword: formData.confirmPassword,
 
                     }),
@@ -199,10 +197,8 @@ const StaffIdPassword = () => {
             setSuccess("Staff login created successfully.");
 
             resetForm();
-
             setShowForm(false);
 
-            // Refresh employee login status
             await loadEmployees();
 
         } catch (err) {
@@ -324,13 +320,11 @@ const StaffIdPassword = () => {
                             <table className="staff-table">
 
                                 <thead>
-
                                 <tr>
                                     <th>Employee ID</th>
                                     <th>Login Status</th>
                                     <th>Action</th>
                                 </tr>
-
                                 </thead>
 
                                 <tbody>
@@ -354,11 +348,9 @@ const StaffIdPassword = () => {
                                                             : "staff-status inactive"
                                                     }
                                                 >
-
                                                     {employee.hasLogin
                                                         ? "Already Created"
                                                         : "Not Created"}
-
                                                 </span>
 
                                         </td>
@@ -447,11 +439,9 @@ const StaffIdPassword = () => {
                             >
 
                                 {error && (
-
                                     <div className="staff-form-error">
                                         {error}
                                     </div>
-
                                 )}
 
                                 <div className="staff-form-grid">
@@ -494,9 +484,7 @@ const StaffIdPassword = () => {
 
                                     <div className="staff-field">
 
-                                        <label>
-                                            Username *
-                                        </label>
+                                        <label>Username *</label>
 
                                         <input
                                             type="text"
@@ -513,9 +501,7 @@ const StaffIdPassword = () => {
 
                                     <div className="staff-field">
 
-                                        <label>
-                                            Email *
-                                        </label>
+                                        <label>Email *</label>
 
                                         <input
                                             type="email"
@@ -532,9 +518,7 @@ const StaffIdPassword = () => {
 
                                     <div className="staff-field">
 
-                                        <label>
-                                            Mobile Number *
-                                        </label>
+                                        <label>Mobile Number *</label>
 
                                         <input
                                             type="tel"
@@ -551,9 +535,7 @@ const StaffIdPassword = () => {
 
                                     <div className="staff-field">
 
-                                        <label>
-                                            Password *
-                                        </label>
+                                        <label>Password *</label>
 
                                         <input
                                             type="password"
@@ -570,9 +552,7 @@ const StaffIdPassword = () => {
 
                                     <div className="staff-field">
 
-                                        <label>
-                                            Confirm Password *
-                                        </label>
+                                        <label>Confirm Password *</label>
 
                                         <input
                                             type="password"
@@ -611,11 +591,9 @@ const StaffIdPassword = () => {
                                             availableEmployees.length === 0
                                         }
                                     >
-
                                         {saving
                                             ? "Creating..."
                                             : "Create Staff"}
-
                                     </button>
 
                                 </div>
