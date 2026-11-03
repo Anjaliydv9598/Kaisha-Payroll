@@ -1,4 +1,3 @@
-
 package com.kaisha.payroll.auth.repository;
 
 import com.kaisha.payroll.auth.entity.Role;
@@ -10,8 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface UserRepository
-        extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long> {
 
     // Find user by username
     Optional<User> findByUsername(String username);
@@ -37,11 +35,18 @@ public interface UserRepository
     // Check existing mobile number
     boolean existsByMobileNumber(String mobileNumber);
 
-    /*
-     * Find user together with company.
-     * Prevents LazyInitializationException
-     * when accessing company information.
-     */
+    // Case-insensitive duplicate checks
+    boolean existsByUsernameIgnoreCase(String username);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    // Check whether an employee already has a login
+    boolean existsByEmployee_Id(Long employeeId);
+
+    // Find staff account linked to an employee
+    Optional<User> findByEmployee_Id(Long employeeId);
+
+    // Find user together with company
     @Query("""
             SELECT u
             FROM User u
@@ -52,25 +57,9 @@ public interface UserRepository
             @Param("username") String username
     );
 
-    /*
-     * Find ADMIN of a particular company.
-     */
+    // Find ADMIN of a particular company
     Optional<User> findFirstByCompany_CompanyIdAndRole(
             String companyId,
             Role role
     );
-
-    /*
-     * EMPLOYEE → STAFF LOGIN CONNECTION
-     *
-     * Check whether an employee already has
-     * a staff login account.
-     */
-    boolean existsByEmployee_Id(Long employeeId);
-
-    /*
-     * Find staff user linked to an employee.
-     */
-    Optional<User> findByEmployee_Id(Long employeeId);
-
 }

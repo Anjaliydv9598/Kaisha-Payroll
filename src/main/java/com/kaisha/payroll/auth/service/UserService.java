@@ -1,15 +1,21 @@
 package com.kaisha.payroll.auth.service;
 
+import com.kaisha.payroll.auth.dto.CreateStaffRequest;
 import com.kaisha.payroll.auth.dto.RegisterRequest;
+import com.kaisha.payroll.auth.dto.StaffEmployeeResponse;
 import com.kaisha.payroll.auth.entity.Role;
 import com.kaisha.payroll.auth.entity.User;
 import com.kaisha.payroll.auth.repository.UserRepository;
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.company.repository.CompanyRepository;
+import com.kaisha.payroll.employee.entity.Employee;
+import com.kaisha.payroll.employee.repository.EmployeeRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class UserService {
@@ -17,17 +23,22 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CompanyRepository companyRepository;
+    private final EmployeeRepository employeeRepository;
+    private final CurrentUserService currentUserService;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            CompanyRepository companyRepository) {
+            CompanyRepository companyRepository,
+            EmployeeRepository employeeRepository,
+            CurrentUserService currentUserService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.companyRepository = companyRepository;
+        this.employeeRepository = employeeRepository;
+        this.currentUserService = currentUserService;
     }
-
 
     // ==================================================
     // REGISTER COMPANY + ADMIN
@@ -36,250 +47,94 @@ public class UserService {
     @Transactional
     public User registerUser(RegisterRequest request) {
 
-        // ==================================================
-        // VALIDATION
-        // ==================================================
-
         if (request == null) {
-            throw new RuntimeException(
-                    "Registration request is required"
-            );
+            throw new RuntimeException("Registration request is required");
         }
-
-
-        // ==================================================
-        // EMAIL
-        // ==================================================
 
         if (request.getEmail() == null ||
                 request.getEmail().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Email is required"
-            );
+            throw new RuntimeException("Email is required");
         }
-
-
-        // ==================================================
-        // COMPANY ID
-        // ==================================================
 
         if (request.getCompanyId() == null ||
                 request.getCompanyId().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Company ID is required"
-            );
+            throw new RuntimeException("Company ID is required");
         }
-
-
-        // ==================================================
-        // PASSWORD
-        // ==================================================
 
         if (request.getPassword() == null ||
                 request.getPassword().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Password is required"
-            );
+            throw new RuntimeException("Password is required");
         }
-
-
-        // ==================================================
-        // CONFIRM PASSWORD
-        // ==================================================
 
         if (request.getConfirmPassword() == null ||
                 request.getConfirmPassword().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Confirm password is required"
-            );
+            throw new RuntimeException("Confirm password is required");
         }
 
-
-        // ==================================================
-        // PASSWORD MATCH
-        // ==================================================
-
-        if (!request.getPassword()
-                .equals(request.getConfirmPassword())) {
-
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException(
-                    "Password and confirm password do not match"
-            );
+                    "Password and confirm password do not match");
         }
-
-
-        // ==================================================
-        // COMPANY NAME
-        // ==================================================
 
         if (request.getCompanyName() == null ||
                 request.getCompanyName().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Company name is required"
-            );
+            throw new RuntimeException("Company name is required");
         }
-
-
-        // ==================================================
-        // LOCATION
-        // ==================================================
 
         if (request.getLocation() == null ||
                 request.getLocation().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Company location is required"
-            );
+            throw new RuntimeException("Company location is required");
         }
-
-
-        // ==================================================
-        // TELEPHONE NUMBER
-        // ==================================================
 
         if (request.getTelephoneNumber() == null ||
                 request.getTelephoneNumber().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Telephone number is required"
-            );
+            throw new RuntimeException("Telephone number is required");
         }
 
-
-        // ==================================================
-        // CLEAN VALUES
-        // ==================================================
-
-        String email =
-                request.getEmail().trim();
-
-        String companyId =
-                request.getCompanyId().trim();
-
-        String companyName =
-                request.getCompanyName().trim();
-
-        String location =
-                request.getLocation().trim();
-
-        String telephoneNumber =
-                request.getTelephoneNumber().trim();
-
-
-        // ==================================================
-        // CHECK EMAIL
-        // ==================================================
+        String email = request.getEmail().trim();
+        String companyId = request.getCompanyId().trim();
+        String companyName = request.getCompanyName().trim();
+        String location = request.getLocation().trim();
+        String telephoneNumber = request.getTelephoneNumber().trim();
 
         if (userRepository.existsByEmail(email)) {
-
-            throw new RuntimeException(
-                    "Email is already registered"
-            );
+            throw new RuntimeException("Email is already registered");
         }
 
-
-        // ==================================================
-        // CHECK COMPANY ID
-        // ==================================================
-
-        if (companyRepository
-                .existsByCompanyId(companyId)) {
-
+        if (companyRepository.existsByCompanyId(companyId)) {
             throw new RuntimeException(
-                    "Company ID already exists. Please choose another."
-            );
+                    "Company ID already exists. Please choose another.");
         }
-
-
-        // ==================================================
-        // CREATE COMPANY
-        // ==================================================
 
         Company company = new Company();
-
         company.setCompanyId(companyId);
-
         company.setCompanyName(companyName);
-
         company.setAddress(location);
-
         company.setTelephoneNumber(telephoneNumber);
-
         company.setActive(true);
-
-
-        // ==================================================
-        // SAVE COMPANY
-        // ==================================================
 
         company = companyRepository.save(company);
 
-
-        // ==================================================
-        // CREATE ADMIN USER
-        // ==================================================
-
         User user = new User();
 
-        /*
-         * Email is used as username.
-         */
-
+        // Email is used as username.
         user.setUsername(email);
-
         user.setEmail(email);
 
+        // Store encoded password only.
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // ==================================================
-        // PASSWORD SECURITY
-        // ==================================================
-
-        /*
-         * Never store the plain password.
-         */
-
-        user.setPassword(
-                passwordEncoder.encode(
-                        request.getPassword()
-                )
-        );
-
-
-        // ==================================================
-        // ROLE
-        // ==================================================
-
-        /*
-         * Public registration creates ADMIN only.
-         *
-         * STAFF users can be created later
-         * by an authorized ADMIN.
-         */
-
+        // Public registration creates ADMIN only.
         user.setRole(Role.ADMIN);
 
-
-        // ==================================================
-        // CONNECT USER TO COMPANY
-        // ==================================================
-
         user.setCompany(company);
-
         user.setActive(true);
 
-
-        // ==================================================
-        // SAVE ADMIN USER
-        // ==================================================
+        // Admin does not need an Employee relationship.
+        user.setEmployee(null);
 
         return userRepository.save(user);
     }
-
 
     // ==================================================
     // FIND USER FOR LOGIN
@@ -287,65 +142,34 @@ public class UserService {
 
     public User findByIdentifier(String identifier) {
 
-        if (identifier == null ||
-                identifier.trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Email is required"
-            );
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
         }
 
         String value = identifier.trim();
 
-
-        // ==================================================
-        // FIND BY EMAIL
-        // ==================================================
-
-        User user =
-                userRepository
-                        .findByEmail(value)
-                        .orElse(null);
+        User user = userRepository
+                .findByEmail(value)
+                .orElse(null);
 
         if (user != null) {
             return user;
         }
 
-
-        // ==================================================
-        // OPTIONAL PHONE LOGIN
-        // ==================================================
-
-        /*
-         * Kept for compatibility with the existing
-         * UserRepository.
-         *
-         * Normally the frontend uses email login.
-         */
-
-        user =
-                userRepository
-                        .findByMobileNumber(value)
-                        .orElse(null);
+        // Optional phone login.
+        user = userRepository
+                .findByMobileNumber(value)
+                .orElse(null);
 
         if (user != null) {
             return user;
         }
 
-
-        // ==================================================
-        // USER NOT FOUND
-        // ==================================================
-
-        throw new RuntimeException(
-                "User not found"
-        );
+        throw new RuntimeException("User not found");
     }
 
-
     // ==================================================
-    // CREATE USER
-    // Used later by ADMIN to create STAFF
+    // EXISTING GENERIC CREATE USER METHOD
     // ==================================================
 
     @Transactional
@@ -357,175 +181,221 @@ public class UserService {
             Role role,
             String companyId) {
 
-        // ==================================================
-        // VALIDATION
-        // ==================================================
-
-        if (username == null ||
-                username.trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Username is required"
-            );
+        if (username == null || username.trim().isEmpty()) {
+            throw new RuntimeException("Username is required");
         }
 
-
-        if (email == null ||
-                email.trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Email is required"
-            );
+        if (email == null || email.trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
         }
 
-
-        if (password == null ||
-                password.isEmpty()) {
-
-            throw new RuntimeException(
-                    "Password is required"
-            );
+        if (password == null || password.isEmpty()) {
+            throw new RuntimeException("Password is required");
         }
-
 
         if (role == null) {
-
-            throw new RuntimeException(
-                    "Role is required"
-            );
+            throw new RuntimeException("Role is required");
         }
 
-
-        if (companyId == null ||
-                companyId.trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Company ID is required"
-            );
+        if (companyId == null || companyId.trim().isEmpty()) {
+            throw new RuntimeException("Company ID is required");
         }
-
-
-        // ==================================================
-        // CLEAN VALUES
-        // ==================================================
 
         username = username.trim();
-
         email = email.trim();
 
-        final String cleanCompanyId =
-                companyId.trim();
+        final String cleanCompanyId = companyId.trim();
 
         if (mobileNumber != null) {
             mobileNumber = mobileNumber.trim();
         }
 
-
-        // ==================================================
-        // CHECK USERNAME
-        // ==================================================
-
-        if (userRepository
-                .existsByUsername(username)) {
-
-            throw new RuntimeException(
-                    "Username already exists"
-            );
+        if (userRepository.existsByUsername(username)) {
+            throw new RuntimeException("Username already exists");
         }
 
-
-        // ==================================================
-        // CHECK EMAIL
-        // ==================================================
-
-        if (userRepository
-                .existsByEmail(email)) {
-
-            throw new RuntimeException(
-                    "Email is already registered"
-            );
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email is already registered");
         }
-
-
-        // ==================================================
-        // CHECK MOBILE NUMBER
-        // ==================================================
 
         if (mobileNumber != null &&
                 !mobileNumber.isEmpty() &&
-                userRepository
-                        .existsByMobileNumber(mobileNumber)) {
-
+                userRepository.existsByMobileNumber(mobileNumber)) {
             throw new RuntimeException(
-                    "Mobile number is already registered"
-            );
+                    "Mobile number is already registered");
         }
 
-
-        // ==================================================
-        // FIND COMPANY
-        // ==================================================
-
-        Company company =
-                companyRepository
-                        .findById(cleanCompanyId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Company not found with id: "
-                                                + cleanCompanyId
-                                )
-                        );
-
-
-        // ==================================================
-        // CREATE USER
-        // ==================================================
+        Company company = companyRepository
+                .findById(cleanCompanyId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Company not found with id: " + cleanCompanyId));
 
         User user = new User();
 
         user.setUsername(username);
-
         user.setEmail(email);
 
-
-        if (mobileNumber != null &&
-                !mobileNumber.isEmpty()) {
-
-            user.setMobileNumber(
-                    mobileNumber
-            );
+        if (mobileNumber != null && !mobileNumber.isEmpty()) {
+            user.setMobileNumber(mobileNumber);
         }
 
-
-        // ==================================================
-        // HASH PASSWORD
-        // ==================================================
-
-        user.setPassword(
-                passwordEncoder.encode(password)
-        );
-
-
-        // ==================================================
-        // ROLE
-        // ==================================================
-
+        user.setPassword(passwordEncoder.encode(password));
         user.setRole(role);
-
-
-        // ==================================================
-        // COMPANY
-        // ==================================================
-
         user.setCompany(company);
-
         user.setActive(true);
 
-
-        // ==================================================
-        // SAVE USER
-        // ==================================================
-
         return userRepository.save(user);
+    }
+
+    // ==================================================
+    // GET ACTIVE EMPLOYEES FOR CURRENT ADMIN'S COMPANY
+    // ==================================================
+
+    @Transactional(readOnly = true)
+    public List<StaffEmployeeResponse> getStaffEmployees() {
+
+        User currentAdmin = currentUserService.getCurrentUser();
+
+        validateAdmin(currentAdmin);
+
+        String companyId = currentAdmin.getCompany().getCompanyId();
+
+        List<Employee> employees = employeeRepository
+                .findByCompany_CompanyIdAndActiveTrueOrderByEmployeeIdAsc(
+                        companyId);
+
+        return employees.stream()
+                .map(employee -> new StaffEmployeeResponse(
+                        employee.getId(),
+                        employee.getEmployeeId(),
+                        userRepository.existsByEmployee_Id(employee.getId())
+                ))
+                .toList();
+    }
+
+    // ==================================================
+    // CREATE STAFF LOGIN AND LINK EXISTING EMPLOYEE
+    // ==================================================
+
+    @Transactional
+    public User createStaffAccount(CreateStaffRequest request) {
+
+        User currentAdmin = currentUserService.getCurrentUser();
+
+        validateAdmin(currentAdmin);
+
+        if (request == null) {
+            throw new RuntimeException(
+                    "Staff creation request is required");
+        }
+
+        String employeeId = cleanRequired(
+                request.getEmployeeId(), "Employee ID is required");
+
+        String username = cleanRequired(
+                request.getUsername(), "Username is required");
+
+        String email = cleanRequired(
+                request.getEmail(), "Email is required");
+
+        String mobileNumber = cleanRequired(
+                request.getMobileNumber(), "Mobile number is required");
+
+        String password = request.getPassword();
+
+        String confirmPassword = request.getConfirmPassword();
+
+        if (password == null || password.isBlank()) {
+            throw new RuntimeException("Password is required");
+        }
+
+        if (confirmPassword == null || confirmPassword.isBlank()) {
+            throw new RuntimeException("Confirm password is required");
+        }
+
+        if (!password.equals(confirmPassword)) {
+            throw new RuntimeException(
+                    "Password and confirm password do not match");
+        }
+
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new RuntimeException("Email is already registered");
+        }
+
+        if (userRepository.existsByMobileNumber(mobileNumber)) {
+            throw new RuntimeException(
+                    "Mobile number is already registered");
+        }
+
+        Company company = currentAdmin.getCompany();
+
+        String companyId = company.getCompanyId();
+
+        // Find employee only inside the logged-in admin's company.
+        Employee employee = employeeRepository
+                .findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
+                        employeeId, companyId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Active employee not found in your company: "
+                                        + employeeId));
+
+        // An employee can have only one staff login.
+        if (userRepository.existsByEmployee_Id(employee.getId())) {
+            throw new RuntimeException(
+                    "This employee already has a staff login");
+        }
+
+        User staff = new User();
+
+        staff.setUsername(username);
+        staff.setEmail(email);
+        staff.setMobileNumber(mobileNumber);
+        staff.setPassword(passwordEncoder.encode(password));
+        staff.setRole(Role.STAFF);
+        staff.setCompany(company);
+        staff.setEmployee(employee);
+        staff.setActive(true);
+
+        return userRepository.save(staff);
+    }
+
+    // ==================================================
+    // ADMIN VALIDATION
+    // ==================================================
+
+    private void validateAdmin(User user) {
+
+        if (user == null) {
+            throw new RuntimeException("Authenticated user not found");
+        }
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new RuntimeException(
+                    "Only ADMIN users can manage staff accounts");
+        }
+
+        if (user.getCompany() == null) {
+            throw new RuntimeException(
+                    "Your admin account is not linked to a company");
+        }
+    }
+
+    // ==================================================
+    // REQUIRED STRING VALIDATION
+    // ==================================================
+
+    private String cleanRequired(String value, String message) {
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new RuntimeException(message);
+        }
+
+        return value.trim();
     }
 }

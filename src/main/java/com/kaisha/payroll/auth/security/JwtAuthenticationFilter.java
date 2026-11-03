@@ -1,3 +1,4 @@
+
 package com.kaisha.payroll.auth.security;
 
 import io.jsonwebtoken.Claims;
@@ -22,17 +23,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
-public class JwtAuthenticationFilter
-        extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final SecretKey secretKey;
 
     public JwtAuthenticationFilter(
             @Value("${jwt.secret}") String secret
     ) {
-
         if (secret == null || secret.isBlank()) {
-
             throw new IllegalStateException(
                     "jwt.secret is missing or empty"
             );
@@ -42,15 +40,25 @@ public class JwtAuthenticationFilter
                 secret.getBytes(StandardCharsets.UTF_8)
         );
     }
+
+    // Skip only public authentication endpoints.
+    // Staff management endpoints MUST pass through this filter.
     @Override
     protected boolean shouldNotFilter(
             HttpServletRequest request
     ) {
-
         String path = request.getServletPath();
 
-        return path.startsWith("/api/auth/");
+        if (path.equals("/api/auth/register")
+                || path.equals("/api/auth/login")
+                || path.equals("/api/auth/admin-login")
+                || path.equals("/api/auth/staff-login")) {
+            return true;
+        }
+
+        return path.startsWith("/api/auth/forgot-password/");
     }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -61,195 +69,63 @@ public class JwtAuthenticationFilter
         String authorizationHeader =
                 request.getHeader("Authorization");
 
-        System.out.println(
-                "JWT FILTER -> "
-                        + request.getMethod()
-                        + " "
-                        + request.getRequestURI()
-        );
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
 
-        // ==================================================
-        // NO AUTHORIZATION HEADER
-        // ==================================================
-
-        if (authorizationHeader == null ||
-                !authorizationHeader.startsWith("Bearer ")) {
-
-            System.out.println(
-                    "JWT FILTER -> Authorization header missing"
-            );
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
+            filterChain.doFilter(request, response);
             return;
         }
 
-        // ==================================================
-        // EXTRACT TOKEN
-        // ==================================================
-
-        String token =
-                authorizationHeader
-                        .substring(7)
-                        .trim();
+        String token = authorizationHeader.substring(7).trim();
 
         if (token.isEmpty()) {
-
-            System.out.println(
-                    "JWT FILTER -> Token is empty"
-            );
-
-            unauthorized(
-                    response,
-                    "JWT token is missing"
-            );
-
+            unauthorized(response, "JWT token is missing");
             return;
         }
 
-        // ==================================================
-        // JWT VALIDATION
-        // IMPORTANT:
-        // Only JWT parsing is inside try/catch.
-        // ==================================================
-
         try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-            Claims claims =
-                    Jwts.parser()
-                            .verifyWith(secretKey)
-                            .build()
-                            .parseSignedClaims(token)
-                            .getPayload();
+            String username = claims.getSubject();
+            String role = claims.get("role", String.class);
 
-            String username =
-                    claims.getSubject();
-
-            String role =
-                    claims.get(
-                            "role",
-                            String.class
-                    );
-
-            System.out.println(
-                    "JWT FILTER -> Token valid"
-            );
-
-            System.out.println(
-                    "JWT FILTER -> Username: "
-                            + username
-            );
-
-            System.out.println(
-                    "JWT FILTER -> Role: "
-                            + role
-            );
-
-            // ==================================================
-            // VALIDATE USERNAME
-            // ==================================================
-
-            if (username == null ||
-                    username.isBlank()) {
-
-                System.out.println(
-                        "JWT FILTER -> Username missing"
-                );
-
-                unauthorized(
-                        response,
-                        "JWT username is missing"
-                );
-
+            if (username == null || username.isBlank()) {
+                unauthorized(response, "JWT username is missing");
                 return;
             }
 
-            // ==================================================
-            // VALIDATE ROLE
-            // ==================================================
-
-            if (role == null ||
-                    role.isBlank()) {
-
-                System.out.println(
-                        "JWT FILTER -> Role missing"
-                );
-
-                unauthorized(
-                        response,
-                        "JWT role is missing"
-                );
-
+            if (role == null || role.isBlank()) {
+                unauthorized(response, "JWT role is missing");
                 return;
             }
 
-            // ==================================================
-            // SET SPRING SECURITY AUTHENTICATION
-            // ==================================================
-
-            if (SecurityContextHolder
-                    .getContext()
+            if (SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
 
-                String authority;
+                String authority = role.startsWith("ROLE_")
+                        ? role
+                        : "ROLE_" + role;
 
-                if (role.startsWith("ROLE_")) {
-
-                    authority = role;
-
-                } else {
-
-                    authority =
-                            "ROLE_" + role;
-                }
-
-                UsernamePasswordAuthenticationToken
-                        authentication =
+                UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 username,
                                 null,
                                 List.of(
-                                        new SimpleGrantedAuthority(
-                                                authority
-                                        )
+                                        new SimpleGrantedAuthority(authority)
                                 )
                         );
 
-                SecurityContextHolder
-                        .getContext()
-                        .setAuthentication(
-                                authentication
-                        );
-
-                System.out.println(
-                        "JWT FILTER -> Authentication set"
-                );
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
             }
 
         } catch (Exception e) {
 
-            // ==================================================
-            // JWT VALIDATION FAILED
-            // ==================================================
-
             SecurityContextHolder.clearContext();
-
-            System.out.println(
-                    "JWT FILTER -> TOKEN VALIDATION FAILED"
-            );
-
-            System.out.println(
-                    "JWT FILTER -> "
-                            + e.getClass().getSimpleName()
-            );
-
-            System.out.println(
-                    "JWT FILTER -> "
-                            + e.getMessage()
-            );
 
             unauthorized(
                     response,
@@ -259,25 +135,8 @@ public class JwtAuthenticationFilter
             return;
         }
 
-        // ==================================================
-        // CONTINUE REQUEST
-        //
-        // IMPORTANT:
-        // This is OUTSIDE the JWT try/catch.
-        //
-        // If controller/service/database throws an exception,
-        // it will NOT be incorrectly reported as a JWT error.
-        // ==================================================
-
-        filterChain.doFilter(
-                request,
-                response
-        );
+        filterChain.doFilter(request, response);
     }
-
-    // ==================================================
-    // UNAUTHORIZED RESPONSE
-    // ==================================================
 
     private void unauthorized(
             HttpServletResponse response,
@@ -288,14 +147,10 @@ public class JwtAuthenticationFilter
                 HttpServletResponse.SC_UNAUTHORIZED
         );
 
-        response.setContentType(
-                "application/json"
-        );
+        response.setContentType("application/json");
 
         response.getWriter().write(
-                "{\"message\":\""
-                        + message
-                        + "\"}"
+                "{\"message\":\"" + message + "\"}"
         );
     }
 }

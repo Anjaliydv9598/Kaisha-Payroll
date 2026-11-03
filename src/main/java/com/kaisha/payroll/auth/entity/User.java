@@ -1,9 +1,10 @@
-
 package com.kaisha.payroll.auth.entity;
 
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.employee.entity.Employee;
+
 import jakarta.persistence.*;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -55,6 +56,7 @@ public class User {
     )
     private Role role;
 
+    // Company relationship
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "company_id",
@@ -62,12 +64,12 @@ public class User {
     )
     private Company company;
 
-    // STAFF account linked to one Employee.
-    // ADMIN accounts can leave this null.
+    // Optional Employee relationship.
+    // ADMIN users can have no Employee.
+    // Each Employee can have at most one User login.
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(
-            name = "employee_id",
-            unique = true
+            name = "employee_id"
     )
     private Employee employee;
 

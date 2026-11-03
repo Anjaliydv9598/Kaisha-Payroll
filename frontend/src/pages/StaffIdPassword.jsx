@@ -1,22 +1,24 @@
-
 import React, { useEffect, useState } from "react";
 import "./StaffIdPassword.css";
 import AdminLayout from "../pages/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Your VITE_API_BASE_URL should include /api
+// Example: http://localhost:8080/api
+const API_BASE_URL = (
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
+).replace(/\/+$/, "");
+
 const STAFF_API = `${API_BASE_URL}/auth/staff`;
 
 const getToken = () => localStorage.getItem("token");
 
 const StaffIdPassword = () => {
-
     const navigate = useNavigate();
 
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-
     const [showForm, setShowForm] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -36,41 +38,38 @@ const StaffIdPassword = () => {
     // ==========================================
 
     const loadEmployees = async () => {
-
         try {
             setLoading(true);
 
-            const response = await fetch(
-                `${STAFF_API}/employees`,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${getToken()}`,
-                    },
-                }
-            );
+            const token = getToken();
+
+            if (!token) {
+                throw new Error("Authentication token not found. Please log in again.");
+            }
+
+            const response = await fetch(`${STAFF_API}/employees`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
             const data = await response.json().catch(() => []);
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "Unable to load employees."
+                    data.message ||
+                    data.detail ||
+                    "Unable to load employees."
                 );
             }
 
             setEmployees(Array.isArray(data) ? data : []);
             setError("");
-
         } catch (err) {
-
-            setError(
-                err.message || "Unable to load employees."
-            );
-
+            setError(err.message || "Unable to load employees.");
         } finally {
-
             setLoading(false);
-
         }
     };
 
@@ -83,7 +82,6 @@ const StaffIdPassword = () => {
     // ==========================================
 
     const handleChange = (event) => {
-
         const { name, value } = event.target;
 
         setFormData((previous) => ({
@@ -97,7 +95,6 @@ const StaffIdPassword = () => {
     // ==========================================
 
     const resetForm = () => {
-
         setFormData({
             employeeId: "",
             username: "",
@@ -115,21 +112,34 @@ const StaffIdPassword = () => {
     // ==========================================
 
     const openCreateForm = () => {
-
         navigate("/admin/master-data", {
             state: {
-                openAddSeries: true
-            }
+                openAddSeries: true,
+            },
         });
-
     };
 
     // ==========================================
-    // 5. CREATE STAFF LOGIN
+    // 5. OPEN STAFF CREATION FORM
+    // ==========================================
+
+    const openStaffForm = (employeeId = "") => {
+        resetForm();
+        setSuccess("");
+
+        setFormData((previous) => ({
+            ...previous,
+            employeeId,
+        }));
+
+        setShowForm(true);
+    };
+
+    // ==========================================
+    // 6. CREATE STAFF LOGIN
     // ==========================================
 
     const handleCreateStaff = async (event) => {
-
         event.preventDefault();
 
         setError("");
@@ -157,36 +167,33 @@ const StaffIdPassword = () => {
         }
 
         try {
-
             setSaving(true);
 
-            const response = await fetch(
-                STAFF_API,
-                {
-                    method: "POST",
+            const token = getToken();
 
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${getToken()}`,
-                    },
+            if (!token) {
+                throw new Error("Authentication token not found. Please log in again.");
+            }
 
-                    body: JSON.stringify({
-
-                        employeeId: formData.employeeId,
-                        username: formData.username.trim(),
-                        email: formData.email.trim(),
-                        mobileNumber: formData.mobileNumber.trim(),
-                        password: formData.password,
-                        confirmPassword: formData.confirmPassword,
-
-                    }),
-                }
-            );
+            const response = await fetch(STAFF_API, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    employeeId: formData.employeeId,
+                    username: formData.username.trim(),
+                    email: formData.email.trim(),
+                    mobileNumber: formData.mobileNumber.trim(),
+                    password: formData.password,
+                    confirmPassword: formData.confirmPassword,
+                }),
+            });
 
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-
                 throw new Error(
                     data.message ||
                     data.detail ||
@@ -196,27 +203,22 @@ const StaffIdPassword = () => {
 
             setSuccess("Staff login created successfully.");
 
-            resetForm();
             setShowForm(false);
+            resetForm();
 
+            // Refresh login status after creating account
             await loadEmployees();
-
         } catch (err) {
-
             setError(
-                err.message ||
-                "Unable to create staff account."
+                err.message || "Unable to create staff account."
             );
-
         } finally {
-
             setSaving(false);
-
         }
     };
 
     // ==========================================
-    // 6. AVAILABLE EMPLOYEES
+    // 7. EMPLOYEE LOGIN COUNTS
     // ==========================================
 
     const availableEmployees = employees.filter(
@@ -228,27 +230,22 @@ const StaffIdPassword = () => {
     ).length;
 
     // ==========================================
-    // 7. UI
+    // 8. UI
     // ==========================================
 
     return (
-
         <AdminLayout>
-
             <div className="staff-page">
 
                 {/* PAGE HEADER */}
 
                 <div className="staff-header">
-
                     <div>
-
                         <h1>Staff ID & Password</h1>
 
                         <p>
                             Connect existing employees with staff login accounts.
                         </p>
-
                     </div>
 
                     <button
@@ -258,7 +255,6 @@ const StaffIdPassword = () => {
                     >
                         + Create Staff
                     </button>
-
                 </div>
 
                 {/* SUCCESS MESSAGE */}
@@ -282,41 +278,31 @@ const StaffIdPassword = () => {
                 <div className="staff-card">
 
                     <div className="staff-card-header">
-
                         <div>
-
                             <h2>Employee Login Accounts</h2>
 
                             <p>
                                 Manage login access for existing employees.
                             </p>
-
                         </div>
 
                         <span>
                             {createdCount} / {employees.length} created
                         </span>
-
                     </div>
 
                     {/* LOADING */}
 
                     {loading ? (
-
                         <div className="staff-state">
                             Loading employees...
                         </div>
-
                     ) : employees.length === 0 ? (
-
                         <div className="staff-state">
                             No active employees found.
                         </div>
-
                     ) : (
-
                         <div className="staff-table-wrapper">
-
                             <table className="staff-table">
 
                                 <thead>
@@ -328,9 +314,7 @@ const StaffIdPassword = () => {
                                 </thead>
 
                                 <tbody>
-
                                 {employees.map((employee) => (
-
                                     <tr key={employee.id}>
 
                                         <td>
@@ -340,7 +324,6 @@ const StaffIdPassword = () => {
                                         </td>
 
                                         <td>
-
                                                 <span
                                                     className={
                                                         employee.hasLogin
@@ -352,72 +335,51 @@ const StaffIdPassword = () => {
                                                         ? "Already Created"
                                                         : "Not Created"}
                                                 </span>
-
                                         </td>
 
                                         <td>
-
                                             {employee.hasLogin ? (
-
                                                 <span className="staff-role">
                                                         Login Exists
                                                     </span>
-
                                             ) : (
-
                                                 <button
                                                     type="button"
                                                     className="staff-reset-button"
-                                                    onClick={() => {
-                                                        resetForm();
-
-                                                        setFormData((previous) => ({
-                                                            ...previous,
-                                                            employeeId: employee.employeeId,
-                                                        }));
-
-                                                        setShowForm(true);
-                                                    }}
+                                                    onClick={() =>
+                                                        openStaffForm(
+                                                            employee.employeeId
+                                                        )
+                                                    }
                                                 >
                                                     Create Staff
                                                 </button>
-
                                             )}
-
                                         </td>
 
                                     </tr>
-
                                 ))}
-
                                 </tbody>
 
                             </table>
-
                         </div>
-
                     )}
-
                 </div>
 
                 {/* CREATE STAFF MODAL */}
 
                 {showForm && (
-
                     <div className="staff-modal-overlay">
 
                         <div className="staff-modal">
 
                             <div className="staff-modal-header">
-
                                 <div>
-
                                     <h2>Create Staff Account</h2>
 
                                     <p>
                                         Create login credentials for an existing employee.
                                     </p>
-
                                 </div>
 
                                 <button
@@ -430,7 +392,6 @@ const StaffIdPassword = () => {
                                 >
                                     ×
                                 </button>
-
                             </div>
 
                             <form
@@ -449,7 +410,6 @@ const StaffIdPassword = () => {
                                     {/* EMPLOYEE DROPDOWN */}
 
                                     <div className="staff-field">
-
                                         <label>
                                             Select Employee *
                                         </label>
@@ -460,30 +420,24 @@ const StaffIdPassword = () => {
                                             onChange={handleChange}
                                             required
                                         >
-
                                             <option value="">
                                                 Select Employee ID
                                             </option>
 
                                             {availableEmployees.map((employee) => (
-
                                                 <option
                                                     key={employee.id}
                                                     value={employee.employeeId}
                                                 >
                                                     {employee.employeeId}
                                                 </option>
-
                                             ))}
-
                                         </select>
-
                                     </div>
 
                                     {/* USERNAME */}
 
                                     <div className="staff-field">
-
                                         <label>Username *</label>
 
                                         <input
@@ -494,13 +448,11 @@ const StaffIdPassword = () => {
                                             placeholder="Enter username"
                                             required
                                         />
-
                                     </div>
 
                                     {/* EMAIL */}
 
                                     <div className="staff-field">
-
                                         <label>Email *</label>
 
                                         <input
@@ -511,13 +463,11 @@ const StaffIdPassword = () => {
                                             placeholder="Enter staff email"
                                             required
                                         />
-
                                     </div>
 
                                     {/* MOBILE */}
 
                                     <div className="staff-field">
-
                                         <label>Mobile Number *</label>
 
                                         <input
@@ -528,13 +478,11 @@ const StaffIdPassword = () => {
                                             placeholder="Enter mobile number"
                                             required
                                         />
-
                                     </div>
 
                                     {/* PASSWORD */}
 
                                     <div className="staff-field">
-
                                         <label>Password *</label>
 
                                         <input
@@ -545,13 +493,11 @@ const StaffIdPassword = () => {
                                             placeholder="Enter password"
                                             required
                                         />
-
                                     </div>
 
                                     {/* CONFIRM PASSWORD */}
 
                                     <div className="staff-field">
-
                                         <label>Confirm Password *</label>
 
                                         <input
@@ -562,7 +508,6 @@ const StaffIdPassword = () => {
                                             placeholder="Confirm password"
                                             required
                                         />
-
                                     </div>
 
                                 </div>
@@ -597,19 +542,13 @@ const StaffIdPassword = () => {
                                     </button>
 
                                 </div>
-
                             </form>
-
                         </div>
-
                     </div>
-
                 )}
 
             </div>
-
         </AdminLayout>
-
     );
 };
 
