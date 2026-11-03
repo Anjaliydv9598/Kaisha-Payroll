@@ -1,7 +1,6 @@
-
 package com.kaisha.payroll.auth.service;
 
-import com.kaisha.payroll.auth.dto.CreateStaffLoginRequest;
+import com.kaisha.payroll.auth.dto.CreateStaffRequest;
 import com.kaisha.payroll.auth.dto.StaffEmployeeResponse;
 import com.kaisha.payroll.auth.entity.Role;
 import com.kaisha.payroll.auth.entity.User;
@@ -9,11 +8,10 @@ import com.kaisha.payroll.auth.repository.UserRepository;
 import com.kaisha.payroll.employee.entity.Employee;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
 
-import jakarta.transaction.Transactional;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -36,9 +34,8 @@ public class StaffEmployeeLinkService {
     }
 
     // Fetch active employees and their login status
-    public List<StaffEmployeeResponse> getEmployees(
-            String companyId
-    ) {
+    @Transactional(readOnly = true)
+    public List<StaffEmployeeResponse> getEmployees(String companyId) {
 
         List<Employee> employees =
                 employeeRepository
@@ -50,9 +47,7 @@ public class StaffEmployeeLinkService {
                 .map(employee -> new StaffEmployeeResponse(
                         employee.getId(),
                         employee.getEmployeeId(),
-                        userRepository.existsByEmployee_Id(
-                                employee.getId()
-                        )
+                        userRepository.existsByEmployee_Id(employee.getId())
                 ))
                 .toList();
     }
@@ -60,104 +55,126 @@ public class StaffEmployeeLinkService {
     // Create Staff Login for an existing employee
     @Transactional
     public void createStaffLogin(
-            CreateStaffLoginRequest request,
+            CreateStaffRequest request,
             String companyId
     ) {
 
-        if (request.employeeId() == null ||
-                request.employeeId().isBlank()) {
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Request body is required"
+            );
+        }
+
+        if (companyId == null || companyId.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Company ID is required"
+            );
+        }
+
+        String employeeId = request.getEmployeeId();
+        String username = request.getUsername();
+        String email = request.getEmail();
+        String mobileNumber = request.getMobileNumber();
+        String password = request.getPassword();
+        String confirmPassword = request.getConfirmPassword();
+
+        if (employeeId == null || employeeId.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Employee ID is required"
             );
         }
 
-        if (request.username() == null ||
-                request.username().isBlank()) {
+        if (username == null || username.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Username is required"
             );
         }
 
-        if (request.email() == null ||
-                request.email().isBlank()) {
+        if (email == null || email.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Email is required"
             );
         }
 
-        if (request.mobileNumber() == null ||
-                request.mobileNumber().isBlank()) {
+        if (mobileNumber == null || mobileNumber.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Mobile number is required"
             );
         }
 
-        if (request.password() == null ||
-                request.password().isBlank() ||
-                !request.password().equals(request.confirmPassword())) {
+        if (password == null || password.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Password is required"
+            );
+        }
+
+        if (!password.equals(confirmPassword)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Passwords do not match"
             );
         }
 
-        // Find employee within the admin's company
+        employeeId = employeeId.trim();
+        username = username.trim();
+        email = email.trim();
+        mobileNumber = mobileNumber.trim();
+
+        // Find active employee within the ADMIN's company
         Employee employee = employeeRepository
                 .findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
-                        request.employeeId(),
+                        employeeId,
                         companyId
                 )
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Active employee not found"
+                        "Active employee not found in your company"
                 ));
 
-        // Prevent duplicate Staff Login
+        // Prevent duplicate login for the same employee
         if (userRepository.existsByEmployee_Id(employee.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Staff login already exists"
+                    "Staff login already exists for this employee"
             );
         }
 
         // Validate unique login details
-        if (userRepository.existsByUsername(request.username())) {
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Username already exists"
             );
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Email already exists"
             );
         }
 
-        if (userRepository.existsByMobileNumber(
-                request.mobileNumber())) {
+        if (userRepository.existsByMobileNumber(mobileNumber)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Mobile number already exists"
             );
         }
 
-        // Create User account
+        // Create User account linked to the existing Employee
         User user = new User();
 
-        user.setUsername(request.username().trim());
-        user.setEmail(request.email().trim());
-        user.setMobileNumber(request.mobileNumber().trim());
-
-        // Never store plain-text passwords
-        user.setPassword(
-                passwordEncoder.encode(request.password())
-        );
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setMobileNumber(mobileNumber);
+        user.setPassword(passwordEncoder.encode(password));
 
         user.setRole(Role.STAFF);
         user.setCompany(employee.getCompany());

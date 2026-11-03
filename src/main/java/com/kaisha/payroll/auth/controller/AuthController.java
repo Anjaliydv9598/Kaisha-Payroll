@@ -36,6 +36,7 @@ public class AuthController {
             EmailService emailService,
             OtpService otpService
     ) {
+
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -45,17 +46,21 @@ public class AuthController {
 
     // =========================================================
     // REGISTER
+    // POST /api/auth/register
     // =========================================================
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(
+            @RequestBody RegisterRequest request
+    ) {
 
         try {
 
             User user = userService.registerUser(request);
 
-            // Wrap email in a try-catch so Gmail timeout does not crash registration
+            // Email failure should not cancel registration.
             try {
+
                 emailService.sendRegistrationEmail(
                         user,
                         request.getCompanyId(),
@@ -63,8 +68,13 @@ public class AuthController {
                         request.getLocation(),
                         request.getTelephoneNumber()
                 );
+
             } catch (Exception mailEx) {
-                System.err.println("Email failed to send, continuing registration: " + mailEx.getMessage());
+
+                System.err.println(
+                        "Email failed to send, continuing registration: "
+                                + mailEx.getMessage()
+                );
             }
 
             Map<String, Object> response = new HashMap<>();
@@ -92,10 +102,7 @@ public class AuthController {
 
             Map<String, String> response = new HashMap<>();
 
-            response.put(
-                    "message",
-                    ex.getMessage()
-            );
+            response.put("message", ex.getMessage());
 
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
@@ -105,6 +112,7 @@ public class AuthController {
 
     // =========================================================
     // ADMIN LOGIN
+    // POST /api/auth/admin-login
     // =========================================================
 
     @PostMapping("/admin-login")
@@ -112,15 +120,12 @@ public class AuthController {
             @RequestBody LoginRequest request
     ) {
 
-        return loginWithRequiredRole(
-                request,
-                Role.ADMIN
-        );
+        return loginWithRequiredRole(request, Role.ADMIN);
     }
-
 
     // =========================================================
     // STAFF LOGIN
+    // POST /api/auth/staff-login
     // =========================================================
 
     @PostMapping("/staff-login")
@@ -128,18 +133,13 @@ public class AuthController {
             @RequestBody LoginRequest request
     ) {
 
-        return loginWithRequiredRole(
-                request,
-                Role.STAFF
-        );
+        return loginWithRequiredRole(request, Role.STAFF);
     }
-
 
     // =========================================================
     // COMMON LOGIN
-    //
-    // Kept for backward compatibility with your existing frontend.
-    // Later the frontend will use /admin-login and /staff-login.
+    // POST /api/auth/login
+    // Kept for backward compatibility.
     // =========================================================
 
     @PostMapping("/login")
@@ -167,7 +167,6 @@ public class AuthController {
                     );
         }
     }
-
 
     // =========================================================
     // ROLE-SPECIFIC LOGIN
@@ -211,12 +210,6 @@ public class AuthController {
                     request.getIdentifier().trim()
             );
 
-            // -------------------------------------------------
-            // IMPORTANT:
-            // Admin login cannot be used by STAFF.
-            // Staff login cannot be used by ADMIN.
-            // -------------------------------------------------
-
             if (user.getRole() != requiredRole) {
 
                 String message;
@@ -242,10 +235,7 @@ public class AuthController {
                         );
             }
 
-            return authenticateUser(
-                    user,
-                    request
-            );
+            return authenticateUser(user, request);
 
         } catch (RuntimeException ex) {
 
@@ -260,7 +250,6 @@ public class AuthController {
         }
     }
 
-
     // =========================================================
     // COMMON AUTHENTICATION
     // =========================================================
@@ -269,10 +258,6 @@ public class AuthController {
             User user,
             LoginRequest request
     ) {
-
-        // -----------------------------------------------------
-        // Check account active/inactive
-        // -----------------------------------------------------
 
         if (!user.isActive()) {
 
@@ -285,11 +270,6 @@ public class AuthController {
                             )
                     );
         }
-
-
-        // -----------------------------------------------------
-        // Check password
-        // -----------------------------------------------------
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
@@ -306,20 +286,10 @@ public class AuthController {
                     );
         }
 
-
-        // -----------------------------------------------------
-        // Generate JWT
-        // -----------------------------------------------------
-
         String token = jwtService.generateToken(
                 user.getUsername(),
                 user.getRole().name()
         );
-
-
-        // -----------------------------------------------------
-        // Login response
-        // -----------------------------------------------------
 
         return ResponseEntity.ok(
                 new LoginResponse(
@@ -330,9 +300,9 @@ public class AuthController {
         );
     }
 
-
     // =========================================================
     // FORGOT PASSWORD - SEND OTP
+    // POST /api/auth/forgot-password/send-otp
     // =========================================================
 
     @PostMapping("/forgot-password/send-otp")
@@ -342,8 +312,7 @@ public class AuthController {
 
         try {
 
-            String identifier =
-                    request.get("identifier");
+            String identifier = request.get("identifier");
 
             otpService.sendOtp(identifier);
 
@@ -367,9 +336,9 @@ public class AuthController {
         }
     }
 
-
     // =========================================================
     // FORGOT PASSWORD - VERIFY OTP
+    // POST /api/auth/forgot-password/verify-otp
     // =========================================================
 
     @PostMapping("/forgot-password/verify-otp")
@@ -379,17 +348,13 @@ public class AuthController {
 
         try {
 
-            String identifier =
-                    request.get("identifier");
+            String identifier = request.get("identifier");
+            String otp = request.get("otp");
 
-            String otp =
-                    request.get("otp");
-
-            String resetToken =
-                    otpService.verifyOtp(
-                            identifier,
-                            otp
-                    );
+            String resetToken = otpService.verifyOtp(
+                    identifier,
+                    otp
+            );
 
             return ResponseEntity.ok(
                     Map.of(
@@ -413,9 +378,9 @@ public class AuthController {
         }
     }
 
-
     // =========================================================
     // FORGOT PASSWORD - RESET
+    // POST /api/auth/forgot-password/reset
     // =========================================================
 
     @PostMapping("/forgot-password/reset")
@@ -425,14 +390,9 @@ public class AuthController {
 
         try {
 
-            String resetToken =
-                    request.get("resetToken");
-
-            String newPassword =
-                    request.get("newPassword");
-
-            String confirmPassword =
-                    request.get("confirmPassword");
+            String resetToken = request.get("resetToken");
+            String newPassword = request.get("newPassword");
+            String confirmPassword = request.get("confirmPassword");
 
             otpService.resetPassword(
                     resetToken,

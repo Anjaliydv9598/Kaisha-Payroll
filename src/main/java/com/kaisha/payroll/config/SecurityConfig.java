@@ -1,15 +1,14 @@
+
 package com.kaisha.payroll.config;
 
 import com.kaisha.payroll.auth.security.JwtAuthenticationFilter;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.http.HttpMethod;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import org.springframework.security.web.SecurityFilterChain;
@@ -52,9 +51,19 @@ public class SecurityConfig {
                                 "/**"
                         ).permitAll()
 
-                        // Authentication APIs
+                        // STAFF MANAGEMENT: ADMIN ONLY
                         .requestMatchers(
-                                "/api/auth/**"
+                                "/api/auth/staff",
+                                "/api/auth/staff/**"
+                        ).hasRole("ADMIN")
+
+                        // Public authentication endpoints
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/admin-login",
+                                "/api/auth/staff-login",
+                                "/api/auth/forgot-password/**"
                         ).permitAll()
 
                         // Support query
@@ -68,7 +77,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // Everything else requires authentication
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
 
