@@ -36,64 +36,35 @@ import MasterDataNoSeries from "./pages/MasterDataNoSeries";
 import Attendance from "./pages/Attendance";
 
 import "./App.css";
-import AdminLayout from "./pages/AdminLayout";
-
-
-// ======================================================
-// ROOT
-// ======================================================
 
 function Root() {
-
-    const [status, setStatus] =
-        useState("checking");
-
+    const [status, setStatus] = useState("checking");
 
     useEffect(() => {
-
         fetch(
             import.meta.env.VITE_API_BASE_URL + "/auth/registration-status"
         )
             .then(response => {
-
                 if (!response.ok) {
-
-                    throw new Error(
-                        "Registration status API failed"
-                    );
+                    throw new Error("Registration status API failed");
                 }
 
                 return response.json();
             })
             .then(data => {
-
-                if (
-                    data.registrationAvailable === true
-                ) {
-
+                if (data.registrationAvailable === true) {
                     setStatus("register");
-
                 } else {
-
                     setStatus("login");
                 }
-
             })
             .catch(error => {
-
-                console.error(
-                    "Registration check failed:",
-                    error
-                );
-
+                console.error("Registration check failed:", error);
                 setStatus("login");
             });
-
     }, []);
 
-
     if (status === "checking") {
-
         return (
             <div
                 style={{
@@ -101,8 +72,7 @@ function Root() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontFamily:
-                        "Arial, Helvetica, sans-serif",
+                    fontFamily: "Arial, Helvetica, sans-serif",
                     fontSize: "18px"
                 }}
             >
@@ -111,80 +81,41 @@ function Root() {
         );
     }
 
-
-    /*
-     * First-time application:
-     * Show registration page.
-     */
     if (status === "register") {
-
         return <Register />;
     }
 
-
-    /*
-     * Company already registered:
-     * Show login selection.
-     */
     return <LoginSelection />;
 }
 
-
-// ======================================================
-// REGISTER GUARD
-// ======================================================
-
 function RegisterGuard() {
-
-    const [status, setStatus] =
-        useState("checking");
-
+    const [status, setStatus] = useState("checking");
 
     useEffect(() => {
-
         fetch(
             import.meta.env.VITE_API_BASE_URL + "/auth/registration-status"
         )
             .then(response => {
-
                 if (!response.ok) {
-
-                    throw new Error(
-                        "Registration status API failed"
-                    );
+                    throw new Error("Registration status API failed");
                 }
 
                 return response.json();
             })
             .then(data => {
-
-                if (
-                    data.registrationAvailable === true
-                ) {
-
+                if (data.registrationAvailable === true) {
                     setStatus("register");
-
                 } else {
-
                     setStatus("login");
                 }
-
             })
             .catch(error => {
-
-                console.error(
-                    "Registration status failed:",
-                    error
-                );
-
+                console.error("Registration status failed:", error);
                 setStatus("login");
             });
-
     }, []);
 
-
     if (status === "checking") {
-
         return (
             <div
                 style={{
@@ -192,8 +123,7 @@ function RegisterGuard() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontFamily:
-                        "Arial, Helvetica, sans-serif",
+                    fontFamily: "Arial, Helvetica, sans-serif",
                     fontSize: "18px"
                 }}
             >
@@ -202,262 +132,141 @@ function RegisterGuard() {
         );
     }
 
-
     if (status === "login") {
-
-        return (
-            <Navigate
-                to="/login"
-                replace
-            />
-        );
+        return <Navigate to="/login" replace />;
     }
-
 
     return <Register />;
 }
 
-
-// ======================================================
-// APP
-// ======================================================
-
 function App() {
-
     return (
         <BrowserRouter>
-
             <Routes>
-
-                {/* =================================================
-                    ROOT
-                ================================================= */}
-
                 <Route
                     path="/"
                     element={<Root />}
                 />
-
-
-                {/* =================================================
-                    LOGIN SELECTION
-                ================================================= */}
 
                 <Route
                     path="/login"
                     element={<LoginSelection />}
                 />
 
-
-                {/* =================================================
-                    ADMIN LOGIN
-                ================================================= */}
-
                 <Route
                     path="/admin-login"
                     element={<AdminLogin />}
                 />
-
-
-                {/* =================================================
-                    STAFF LOGIN
-                ================================================= */}
 
                 <Route
                     path="/staff-login"
                     element={<StaffLogin />}
                 />
 
-
-                {/* =================================================
-                    REGISTER
-                ================================================= */}
-
                 <Route
                     path="/register"
                     element={<RegisterGuard />}
                 />
-
-
-                {/* =================================================
-                    FORGOT PASSWORD
-                ================================================= */}
 
                 <Route
                     path="/forgot-password"
                     element={<ForgotPassword />}
                 />
 
-
-                {/* =================================================
-                    ADMIN DASHBOARD
-                ================================================= */}
-
                 <Route
                     path="/admin-dashboard"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <AdminDashboard />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN COMPANY
-                ================================================= */}
-
                 <Route
                     path="/admin/company"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Company />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN MASTER DATA
-                ================================================= */}
-
                 <Route
                     path="/admin/master-data"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <MasterDataNoSeries />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN EMPLOYEE DATA CREATE
-                    ADMIN + STAFF
-                ================================================= */}
-
                 <Route
                     path="/admin/employee-create"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute requiredRole="ADMIN">
                             <EmployeeDataCreate />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN DEPARTMENT
-                ================================================= */}
-
                 <Route
                     path="/admin/department"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Department />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN SALARY
-                ================================================= */}
-
                 <Route
                     path="/admin/salary"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Salary />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN REPORT
-                ================================================= */}
-
                 <Route
                     path="/admin/report"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Report />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN ATTENDANCE
-                ================================================= */}
-
                 <Route
                     path="/admin/attendance"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Attendance />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN STAFF ID & PASSWORD
-                ================================================= */}
-
                 <Route
                     path="/admin/staff-id-password"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <StaffIdPassword />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN CALENDAR
-                ================================================= */}
-
                 <Route
                     path="/admin/calendar"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Calendar />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN HELP & SUPPORT
-                ================================================= */}
-
                 <Route
                     path="/admin/help-support"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <AdminModulePage
                                 title="Help & Support"
                                 description="Manage staff and employee support queries."
@@ -466,33 +275,19 @@ function App() {
                     }
                 />
 
-
-                {/* =================================================
-                    ADMIN DOWNLOADS
-                ================================================= */}
-
                 <Route
                     path="/admin/downloads"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <Downloads />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    SALARY COMPONENTS
-                ================================================= */}
-
                 <Route
                     path="/admin/salary-components"
                     element={
-                        <ProtectedRoute
-                            requiredRole="ADMIN"
-                        >
+                        <ProtectedRoute requiredRole="ADMIN">
                             <AdminModulePage
                                 title="Salary Component of Every Employee"
                                 description="Manage salary components for individual employees."
@@ -501,53 +296,22 @@ function App() {
                     }
                 />
 
-
-                {/* =================================================
-                    STAFF DASHBOARD
-                ================================================= */}
-
                 <Route
                     path="/staff-dashboard"
                     element={
-                        <ProtectedRoute
-                            requiredRole="STAFF"
-                        >
+                        <ProtectedRoute requiredRole="STAFF">
                             <StaffDashboard />
                         </ProtectedRoute>
                     }
                 />
 
-
-                {/* =================================================
-                    UNKNOWN ROUTE
-                    MUST BE LAST
-                ================================================= */}
-
                 <Route
                     path="*"
-                    element={
-                        <Navigate
-                            to="/"
-                            replace
-                        />
-                    }
+                    element={<Navigate to="/" replace />}
                 />
-                <Route
-                    path="/admin/employee-create"
-                    element={
-                        <ProtectedRoute>
-                            <AdminLayout>
-                                <EmployeeDataCreate />
-                            </AdminLayout>
-                        </ProtectedRoute>
-                    }
-                />
-
             </Routes>
-
         </BrowserRouter>
     );
 }
-
 
 export default App;

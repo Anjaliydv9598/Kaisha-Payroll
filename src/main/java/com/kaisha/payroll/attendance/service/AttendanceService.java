@@ -1,248 +1,677 @@
-
 package com.kaisha.payroll.attendance.service;
 
-import com.kaisha.payroll.attendance.dto.AttendanceMonthlySummary;
+import com.kaisha.payroll.attendance.dto.AttendanceRequest;
+import com.kaisha.payroll.attendance.dto.AttendanceResponse;
 import com.kaisha.payroll.attendance.entity.Attendance;
 import com.kaisha.payroll.attendance.entity.AttendanceStatus;
 import com.kaisha.payroll.attendance.repository.AttendanceRepository;
-import com.kaisha.payroll.auth.service.CurrentUserService;
+import com.kaisha.payroll.auth.repository.UserRepository;
+import com.kaisha.payroll.auth.entity.User;
+import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.employee.entity.Employee;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
-import com.kaisha.payroll.leave.entity.Leave;
-import com.kaisha.payroll.leave.entity.LeaveStatus;
-import com.kaisha.payroll.leave.entity.LeaveType;
-import com.kaisha.payroll.leave.repository.LeaveRepository;
-
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Service
-public class AttendanceMonthlyService {
+@Transactional
+public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
-    private final LeaveRepository leaveRepository;
-    private final CurrentUserService currentUserService;
+    private final UserRepository userRepository;
 
-    public AttendanceMonthlyService(
-            EmployeeRepository employeeRepository,
+    public AttendanceService(
             AttendanceRepository attendanceRepository,
-            LeaveRepository leaveRepository,
-            CurrentUserService currentUserService) {
-
-        this.employeeRepository = employeeRepository;
+            EmployeeRepository employeeRepository,
+            UserRepository userRepository
+    ) {
         this.attendanceRepository = attendanceRepository;
-        this.leaveRepository = leaveRepository;
-        this.currentUserService = currentUserService;
+        this.employeeRepository = employeeRepository;
+        this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
-    public AttendanceMonthlySummary getMonthlySummary(
-            String employeeId,
-            int year,
-            int month,
-            BigDecimal monthlyGrossSalary) {
+    // ---------------------------------------------------------
+    // GET ALL
+    // ---------------------------------------------------------
 
-        if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("Invalid month");
-        }
+    public List<AttendanceResponse> getAllAttendance(String email) {
 
-        if (monthlyGrossSalary == null
-                || monthlyGrossSalary.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Invalid monthly salary");
-        }
+        Company company = getCompany(email);
 
-        String companyId = currentUserService.getCurrentCompanyId();
+        return attendanceRepository
+                .findByCompany_CompanyIdOrderByAttendanceDateDesc(
+                        company.getCompanyId()
+                )
+                .stream()
+                .map(AttendanceResponse::new)
+                .toList();
+    }
 
-        Employee employee = employeeRepository
-                .findByEmployeeIdAndCompany_CompanyIdAndActiveTrue(
-                        employeeId, companyId)
-                .orElseThrow(() ->
-                        new RuntimeException("Employee not found in your company"));
+    // ---------------------------------------------------------
+    // GET BY ID
+    // ---------------------------------------------------------
 
-        LocalDate startDate = LocalDate.of(year, month, 1);
-        LocalDate endDate = startDate.withDayOfMonth(
-                startDate.lengthOfMonth());
+    public AttendanceResponse getAttendance(
+            Long id,
+            String email
+    ) {
 
-        List<Attendance> records =
-                attendanceRepository.findByEmployeeAndAttendanceDateBetween(
-                        employee, startDate, endDate);
+        Company company = getCompany(email);
 
-        AttendanceMonthlySummary summary =
-                new AttendanceMonthlySummary();
-
-        summary.setEmployeeId(employeeId);
-        summary.setYear(year);
-        summary.setMonth(month);
-
-        // Store attendance by date for leave-date checking.
-        Map<LocalDate, Attendance> attendanceByDate = new HashMap<>();
-
-        for (Attendance attendance : records) {
-            attendanceByDate.put(
-                    attendance.getAttendanceDate(), attendance);
-        }
-
-        // Fetch approved leaves overlapping this month.
-        List<Leave> approvedLeaves =
-                leaveRepository
-                        .findByCompanyIdAndEmployee_EmployeeIdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
-                                companyId,
-                                employeeId,
-                                LeaveStatus.APPROVED,
-                                endDate,
-                                startDate
+        Attendance attendance =
+                attendanceRepository
+                        .findByIdAndCompany_CompanyId(
+                                id,
+                                company.getCompanyId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Attendance record not found"
+                                )
                         );
 
-        Set<LocalDate> appliedLeaveDates = new HashSet<>();
+        return new AttendanceResponse(attendance);
+    }
 
-        int paidLeaveDays = 0;
-        int unpaidLeaveDays = 0;
+    // ---------------------------------------------------------
+    // GET EMPLOYEE ATTENDANCE
+    // ---------------------------------------------------------
 
-        // Count approved leave dates.
-        for (Leave leave : approvedLeaves) {
+    public List<AttendanceResponse> getEmployeeAttendance(
+            String employeeId,
+            String email
+    ) {
 
-            LocalDate leaveStart = leave.getStartDate().isBefore(startDate)
-                    ? startDate : leave.getStartDate();
+        Company company = getCompany(email);
 
-            LocalDate leaveEnd = leave.getEndDate().isAfter(endDate)
-                    ? endDate : leave.getEndDate();
+        return attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdOrderByAttendanceDateDesc(
+                        employeeId,
+                        company.getCompanyId()
+                )
+                .stream()
+                .map(AttendanceResponse::new)
+                .toList();
+    }
 
-            for (LocalDate date = leaveStart;
-                 !date.isAfter(leaveEnd);
-                 date = date.plusDays(1)) {
+    // ---------------------------------------------------------
+    // GET BY DATE
+    // ---------------------------------------------------------
 
-                Attendance attendance = attendanceByDate.get(date);
+    public List<AttendanceResponse> getByDate(
+            LocalDate date,
+            String email
+    ) {
 
-                // Do not consume leave on a holiday, weekly off,
-                // or a day when the employee actually attended.
-                if (attendance != null) {
+        Company company = getCompany(email);
 
-                    AttendanceStatus status = attendance.getStatus();
+        return attendanceRepository
+                .findByCompany_CompanyIdAndAttendanceDateOrderByEmployee_EmployeeIdAsc(
+                        company.getCompanyId(),
+                        date
+                )
+                .stream()
+                .map(AttendanceResponse::new)
+                .toList();
+    }
 
-                    if (status == AttendanceStatus.HOLIDAY
-                            || status == AttendanceStatus.WEEK_OFF
-                            || status == AttendanceStatus.PRESENT) {
-                        continue;
-                    }
-                }
+    // ---------------------------------------------------------
+    // GET DATE RANGE
+    // ---------------------------------------------------------
 
-                // Prevent duplicate counting of the same date.
-                if (!appliedLeaveDates.add(date)) {
-                    continue;
-                }
+    public List<AttendanceResponse> getByDateRange(
+            LocalDate from,
+            LocalDate to,
+            String email
+    ) {
 
-                if (leave.getLeaveType() == LeaveType.PAID) {
-                    paidLeaveDays++;
-                } else if (leave.getLeaveType() == LeaveType.UNPAID) {
-                    unpaidLeaveDays++;
-                }
-            }
+        if (from == null || to == null) {
+            throw new RuntimeException(
+                    "From date and to date are required"
+            );
         }
 
-        summary.setPaidLeaveDays(paidLeaveDays);
-        summary.setUnpaidLeaveDays(unpaidLeaveDays);
+        if (from.isAfter(to)) {
+            throw new RuntimeException(
+                    "From date cannot be after to date"
+            );
+        }
 
-        // Count attendance records, excluding dates already
-        // classified as approved leave.
+        Company company = getCompany(email);
+
+        return attendanceRepository
+                .findByCompany_CompanyIdAndAttendanceDateBetweenOrderByAttendanceDateDesc(
+                        company.getCompanyId(),
+                        from,
+                        to
+                )
+                .stream()
+                .map(AttendanceResponse::new)
+                .toList();
+    }
+
+    // ---------------------------------------------------------
+    // CREATE ATTENDANCE
+    // ---------------------------------------------------------
+
+    public AttendanceResponse createAttendance(
+            AttendanceRequest request,
+            String email
+    ) {
+
+        validateRequest(request);
+
+        Company company = getCompany(email);
+
+        Employee employee =
+                getEmployee(
+                        request.getEmployeeId(),
+                        company.getCompanyId()
+                );
+
+        LocalDate date = request.getAttendanceDate();
+
+        if (attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employee.getEmployeeId(),
+                        company.getCompanyId(),
+                        date
+                )
+                .isPresent()) {
+
+            throw new RuntimeException(
+                    "Attendance already exists for employee "
+                            + employee.getEmployeeId()
+                            + " on "
+                            + date
+            );
+        }
+
+        Attendance attendance = new Attendance();
+
+        attendance.setEmployee(employee);
+        attendance.setCompany(company);
+        attendance.setAttendanceDate(date);
+
+        attendance.setPunchIn(request.getPunchIn());
+        attendance.setPunchOut(request.getPunchOut());
+
+        attendance.setStatus(
+                determineStatus(
+                        request.getPunchIn(),
+                        request.getPunchOut(),
+                        request.getStatus()
+                )
+        );
+
+        attendance.setCorrectionReason(
+                clean(request.getCorrectionReason())
+        );
+
+        attendance.setModifiedBy(email);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        Attendance saved =
+                attendanceRepository.save(attendance);
+
+        return new AttendanceResponse(saved);
+    }
+
+    // ---------------------------------------------------------
+    // UPDATE ATTENDANCE
+    // ---------------------------------------------------------
+
+    public AttendanceResponse updateAttendance(
+            Long id,
+            AttendanceRequest request,
+            String email
+    ) {
+
+        validateRequest(request);
+
+        Company company = getCompany(email);
+
+        Attendance attendance =
+                attendanceRepository
+                        .findByIdAndCompany_CompanyId(
+                                id,
+                                company.getCompanyId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Attendance record not found"
+                                )
+                        );
+
+        Employee employee =
+                getEmployee(
+                        request.getEmployeeId(),
+                        company.getCompanyId()
+                );
+
+        /*
+         * If employee/date is changed, make sure another
+         * attendance record doesn't already exist.
+         */
+        attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employee.getEmployeeId(),
+                        company.getCompanyId(),
+                        request.getAttendanceDate()
+                )
+                .ifPresent(existing -> {
+
+                    if (!existing.getId().equals(id)) {
+
+                        throw new RuntimeException(
+                                "Attendance already exists for employee "
+                                        + employee.getEmployeeId()
+                                        + " on "
+                                        + request.getAttendanceDate()
+                        );
+                    }
+                });
+
+        attendance.setEmployee(employee);
+        attendance.setAttendanceDate(
+                request.getAttendanceDate()
+        );
+
+        attendance.setPunchIn(
+                request.getPunchIn()
+        );
+
+        attendance.setPunchOut(
+                request.getPunchOut()
+        );
+
+        attendance.setStatus(
+                determineStatus(
+                        request.getPunchIn(),
+                        request.getPunchOut(),
+                        request.getStatus()
+                )
+        );
+
+        attendance.setCorrectionReason(
+                clean(request.getCorrectionReason())
+        );
+
+        attendance.setModifiedBy(email);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        return new AttendanceResponse(
+                attendanceRepository.save(attendance)
+        );
+    }
+
+    // ---------------------------------------------------------
+    // DELETE
+    // ---------------------------------------------------------
+
+    public void deleteAttendance(
+            Long id,
+            String email
+    ) {
+
+        Company company = getCompany(email);
+
+        Attendance attendance =
+                attendanceRepository
+                        .findByIdAndCompany_CompanyId(
+                                id,
+                                company.getCompanyId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Attendance record not found"
+                                )
+                        );
+
+        attendanceRepository.delete(attendance);
+    }
+
+    // ---------------------------------------------------------
+    // PUNCH IN
+    // ---------------------------------------------------------
+
+    public AttendanceResponse punchIn(
+            String employeeId,
+            String email
+    ) {
+
+        Company company = getCompany(email);
+
+        Employee employee =
+                getEmployee(
+                        employeeId,
+                        company.getCompanyId()
+                );
+
+        LocalDate today = LocalDate.now();
+
+        Attendance attendance =
+                attendanceRepository
+                        .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                                employeeId,
+                                company.getCompanyId(),
+                                today
+                        )
+                        .orElse(null);
+
+        if (attendance == null) {
+
+            attendance = new Attendance();
+
+            attendance.setEmployee(employee);
+            attendance.setCompany(company);
+            attendance.setAttendanceDate(today);
+
+        } else if (attendance.getPunchIn() != null) {
+
+            throw new RuntimeException(
+                    "Employee has already punched in today"
+            );
+        }
+
+        attendance.setPunchIn(LocalTime.now());
+
+        if (attendance.getPunchOut() != null) {
+            attendance.setStatus(
+                    AttendanceStatus.PRESENT
+            );
+        } else {
+            attendance.setStatus(
+                    AttendanceStatus.MISSING_PUNCH
+            );
+        }
+
+        attendance.setModifiedBy(email);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        return new AttendanceResponse(
+                attendanceRepository.save(attendance)
+        );
+    }
+
+    // ---------------------------------------------------------
+    // PUNCH OUT
+    // ---------------------------------------------------------
+
+    public AttendanceResponse punchOut(
+            String employeeId,
+            String email
+    ) {
+
+        Company company = getCompany(email);
+
+        Attendance attendance =
+                attendanceRepository
+                        .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                                employeeId,
+                                company.getCompanyId(),
+                                LocalDate.now()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Employee has not punched in today"
+                                )
+                        );
+
+        if (attendance.getPunchIn() == null) {
+
+            throw new RuntimeException(
+                    "Employee has not punched in today"
+            );
+        }
+
+        if (attendance.getPunchOut() != null) {
+
+            throw new RuntimeException(
+                    "Employee has already punched out today"
+            );
+        }
+
+        attendance.setPunchOut(LocalTime.now());
+
+        attendance.setStatus(
+                AttendanceStatus.PRESENT
+        );
+
+        attendance.setModifiedBy(email);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        return new AttendanceResponse(
+                attendanceRepository.save(attendance)
+        );
+    }
+
+    // ---------------------------------------------------------
+    // MISSING PUNCH -> ABSENT AT 11 PM
+    // ---------------------------------------------------------
+
+    public int markMissingPunchesAbsent() {
+
+        LocalDate today = LocalDate.now();
+
+        /*
+         * We need company IDs because Attendance is
+         * company-specific.
+         *
+         * The controller/admin can also trigger this manually.
+         */
+        List<Attendance> records =
+                attendanceRepository
+                        .findAll()
+                        .stream()
+                        .filter(a ->
+                                today.equals(
+                                        a.getAttendanceDate()
+                                )
+                                        &&
+                                        a.getStatus()
+                                                == AttendanceStatus.MISSING_PUNCH
+                        )
+                        .toList();
+
+        int updated = 0;
+
         for (Attendance attendance : records) {
 
-            LocalDate attendanceDate = attendance.getAttendanceDate();
+            attendance.setStatus(
+                    AttendanceStatus.ABSENT
+            );
 
-            if (appliedLeaveDates.contains(attendanceDate)) {
-                continue;
-            }
+            attendance.setModifiedBy(
+                    "SYSTEM"
+            );
 
-            AttendanceStatus status = attendance.getStatus();
+            attendance.setModifiedAt(
+                    LocalDateTime.now()
+            );
 
-            if (status == null) {
-                continue;
-            }
+            attendanceRepository.save(attendance);
 
-            switch (status) {
-
-                case PRESENT ->
-                        summary.setPresentDays(
-                                summary.getPresentDays() + 1);
-
-                case ABSENT ->
-                        summary.setAbsentDays(
-                                summary.getAbsentDays() + 1);
-
-                case HALF_DAY ->
-                        summary.setHalfDays(
-                                summary.getHalfDays() + 1);
-
-                case HOLIDAY ->
-                        summary.setPaidHolidays(
-                                summary.getPaidHolidays() + 1);
-
-                case WEEK_OFF ->
-                        summary.setWeeklyOffs(
-                                summary.getWeeklyOffs() + 1);
-
-                case MISSING_PUNCH ->
-                        summary.setPendingMissingPunches(
-                                summary.getPendingMissingPunches() + 1);
-
-                case LEAVE -> {
-                    // Only approved leave requests are counted above.
-                }
-            }
+            updated++;
         }
 
-        // Unpaid days = absent + half-day + approved unpaid leave.
-        BigDecimal unpaidDays =
-                BigDecimal.valueOf(summary.getAbsentDays())
-                        .add(
-                                BigDecimal.valueOf(summary.getHalfDays())
-                                        .multiply(new BigDecimal("0.5"))
+        return updated;
+    }
+
+    // ---------------------------------------------------------
+    // HELPERS
+    // ---------------------------------------------------------
+
+    private Company getCompany(String email) {
+
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Logged-in user not found"
+                                )
+                        );
+
+        if (user.getCompany() == null) {
+
+            throw new RuntimeException(
+                    "User is not associated with a company"
+            );
+        }
+
+        return user.getCompany();
+    }
+
+    private Employee getEmployee(
+            String employeeId,
+            String companyId
+    ) {
+
+        if (employeeId == null ||
+                employeeId.isBlank()) {
+
+            throw new RuntimeException(
+                    "Employee ID is required"
+            );
+        }
+
+        return employeeRepository
+                .findByEmployeeIdAndCompany_CompanyId(
+                        employeeId.trim(),
+                        companyId
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Employee not found: "
+                                        + employeeId
                         )
-                        .add(BigDecimal.valueOf(unpaidLeaveDays));
+                );
+    }
 
-        summary.setUnpaidDays(unpaidDays);
+    private void validateRequest(
+            AttendanceRequest request
+    ) {
 
-        // Include approved paid and unpaid leave in scheduled days.
-        int scheduledWorkingDays =
-                summary.getPresentDays()
-                        + summary.getAbsentDays()
-                        + summary.getHalfDays()
-                        + paidLeaveDays
-                        + unpaidLeaveDays;
+        if (request == null) {
 
-        summary.setScheduledWorkingDays(scheduledWorkingDays);
-
-        if (summary.getPendingMissingPunches() > 0) {
-            throw new IllegalStateException(
-                    "Payroll cannot be processed. "
-                            + "Pending missing punches require admin review.");
+            throw new RuntimeException(
+                    "Attendance request is required"
+            );
         }
 
-        if (scheduledWorkingDays > 0) {
+        if (request.getEmployeeId() == null ||
+                request.getEmployeeId().isBlank()) {
 
-            BigDecimal dailyRate =
-                    monthlyGrossSalary.divide(
-                            BigDecimal.valueOf(scheduledWorkingDays),
-                            2,
-                            RoundingMode.HALF_UP);
-
-            BigDecimal deduction =
-                    dailyRate.multiply(unpaidDays)
-                            .setScale(2, RoundingMode.HALF_UP);
-
-            summary.setDailyRate(dailyRate);
-            summary.setAttendanceDeduction(deduction);
+            throw new RuntimeException(
+                    "Employee ID is required"
+            );
         }
 
-        return summary;
+        if (request.getAttendanceDate() == null) {
+
+            throw new RuntimeException(
+                    "Attendance date is required"
+            );
+        }
+
+        if (request.getPunchIn() != null &&
+                request.getPunchOut() != null &&
+                request.getPunchOut()
+                        .isBefore(request.getPunchIn())) {
+
+            throw new RuntimeException(
+                    "Punch out cannot be before punch in"
+            );
+        }
+    }
+
+    private AttendanceStatus determineStatus(
+            LocalTime punchIn,
+            LocalTime punchOut,
+            AttendanceStatus requestedStatus
+    ) {
+
+        /*
+         * Explicit statuses such as LEAVE/HOLIDAY/WEEK_OFF
+         * should be respected.
+         */
+        if (requestedStatus == AttendanceStatus.LEAVE ||
+                requestedStatus == AttendanceStatus.HOLIDAY ||
+                requestedStatus == AttendanceStatus.WEEK_OFF ||
+                requestedStatus == AttendanceStatus.HALF_DAY ||
+                requestedStatus == AttendanceStatus.ABSENT) {
+
+            return requestedStatus;
+        }
+
+        if (punchIn == null) {
+            return AttendanceStatus.ABSENT;
+        }
+
+        if (punchOut == null) {
+            return AttendanceStatus.MISSING_PUNCH;
+        }
+
+        return AttendanceStatus.PRESENT;
+    }
+
+    private void calculateWorkingHours(
+            Attendance attendance
+    ) {
+
+        if (attendance.getPunchIn() == null ||
+                attendance.getPunchOut() == null) {
+
+            attendance.setWorkingHours(null);
+            return;
+        }
+
+        Duration duration =
+                Duration.between(
+                        attendance.getPunchIn(),
+                        attendance.getPunchOut()
+                );
+
+        double hours =
+                duration.toMinutes() / 60.0;
+
+        attendance.setWorkingHours(
+                BigDecimal.valueOf(hours)
+                        .setScale(
+                                2,
+                                RoundingMode.HALF_UP
+                        )
+        );
+    }
+
+    private String clean(String value) {
+
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = value.trim();
+
+        return cleaned.isEmpty()
+                ? null
+                : cleaned;
     }
 }
