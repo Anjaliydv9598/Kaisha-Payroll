@@ -4,8 +4,10 @@ import "./StaffIdPassword.css";
 import AdminLayout from "../pages/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
-// API URL should include /api
-// Example: http://localhost:8080/api
+// ==========================================
+// API CONFIGURATION
+// ==========================================
+
 const API_BASE_URL = (
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
 ).replace(/\/+$/, "");
@@ -14,7 +16,10 @@ const STAFF_API = `${API_BASE_URL}/auth/staff`;
 
 const getToken = () => localStorage.getItem("token");
 
-// Read JSON or plain-text backend responses safely
+// ==========================================
+// RESPONSE HANDLER
+// ==========================================
+
 const readResponse = async (response) => {
     const text = await response.text();
 
@@ -38,23 +43,36 @@ const getErrorMessage = (data, fallback) => {
     );
 };
 
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
 const StaffIdPassword = () => {
 
     const navigate = useNavigate();
 
+    // Employee data
     const [employees, setEmployees] = useState([]);
+
+    // Loading states
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+
+    // Modal state
     const [showForm, setShowForm] = useState(false);
 
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+    // Password visibility
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    // Form data
     const [formData, setFormData] = useState({
         employeeId: "",
         password: "",
         confirmPassword: ""
     });
 
+    // Messages
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -90,10 +108,7 @@ const StaffIdPassword = () => {
 
             if (!response.ok) {
                 throw new Error(
-                    getErrorMessage(
-                        data,
-                        "Unable to load employees."
-                    )
+                    getErrorMessage(data, "Unable to load employees.")
                 );
             }
 
@@ -107,6 +122,7 @@ const StaffIdPassword = () => {
         } finally {
 
             setLoading(false);
+
         }
     };
 
@@ -124,7 +140,7 @@ const StaffIdPassword = () => {
     );
 
     // ==========================================
-    // 3. HANDLE FORM INPUT
+    // 3. HANDLE INPUT CHANGES
     // ==========================================
 
     const handleChange = (event) => {
@@ -149,8 +165,10 @@ const StaffIdPassword = () => {
             confirmPassword: ""
         });
 
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+
         setError("");
-        setSelectedEmployeeId("");
     };
 
     // ==========================================
@@ -182,16 +200,16 @@ const StaffIdPassword = () => {
             confirmPassword: ""
         });
 
-        setSelectedEmployeeId(employeeId);
-
         setShowForm(true);
     };
 
     // ==========================================
-    // 7. CLOSE STAFF FORM
+    // 7. CLOSE STAFF LOGIN FORM
     // ==========================================
 
     const closeStaffForm = () => {
+
+        if (saving) return;
 
         setShowForm(false);
 
@@ -209,16 +227,25 @@ const StaffIdPassword = () => {
         setError("");
         setSuccess("");
 
+        // Employee validation
         if (!formData.employeeId) {
 
-            setError("Please select an employee.");
+            setError("Employee ID is required.");
 
             return;
         }
 
+        // Password validation
         if (!formData.password || !formData.confirmPassword) {
 
             setError("Please enter and confirm the password.");
+
+            return;
+        }
+
+        if (formData.password.length < 8) {
+
+            setError("Password must contain at least 8 characters.");
 
             return;
         }
@@ -230,9 +257,17 @@ const StaffIdPassword = () => {
             return;
         }
 
-        if (!selectedEmployee || selectedEmployee.hasLogin) {
+        // Employee login validation
+        if (!selectedEmployee) {
 
-            setError("Please select an employee without an existing login.");
+            setError("Selected employee was not found.");
+
+            return;
+        }
+
+        if (selectedEmployee.hasLogin) {
+
+            setError("This employee already has a login account.");
 
             return;
         }
@@ -250,6 +285,9 @@ const StaffIdPassword = () => {
                 );
             }
 
+            // Send only Employee ID and password details.
+            // Employee details are retrieved by the backend.
+
             const response = await fetch(
                 STAFF_API,
                 {
@@ -260,7 +298,6 @@ const StaffIdPassword = () => {
                         Authorization: `Bearer ${token}`
                     },
 
-                    // Matches the updated CreateStaffRequest.java
                     body: JSON.stringify({
                         employeeId: formData.employeeId,
                         password: formData.password,
@@ -281,8 +318,11 @@ const StaffIdPassword = () => {
                 );
             }
 
+            // Success
+            const createdEmployeeId = formData.employeeId;
+
             setSuccess(
-                `Login credentials created successfully for ${formData.employeeId}.`
+                `Login credentials created successfully for ${createdEmployeeId}.`
             );
 
             setShowForm(false);
@@ -301,16 +341,13 @@ const StaffIdPassword = () => {
         } finally {
 
             setSaving(false);
+
         }
     };
 
     // ==========================================
     // 9. EMPLOYEE LOGIN COUNTS
     // ==========================================
-
-    const availableEmployees = employees.filter(
-        employee => !employee.hasLogin
-    );
 
     const createdCount = employees.filter(
         employee => employee.hasLogin
@@ -331,13 +368,11 @@ const StaffIdPassword = () => {
                 <div className="staff-header">
 
                     <div>
-
                         <h1>Staff ID & Password</h1>
 
                         <p>
                             Create login credentials for existing employees.
                         </p>
-
                     </div>
 
                     <button
@@ -353,21 +388,17 @@ const StaffIdPassword = () => {
                 {/* SUCCESS MESSAGE */}
 
                 {success && (
-
                     <div className="staff-success">
                         {success}
                     </div>
-
                 )}
 
                 {/* ERROR MESSAGE */}
 
                 {error && !showForm && (
-
                     <div className="staff-error">
                         {error}
                     </div>
-
                 )}
 
                 {/* EMPLOYEE ACCOUNT CARD */}
@@ -377,13 +408,11 @@ const StaffIdPassword = () => {
                     <div className="staff-card-header">
 
                         <div>
-
                             <h2>Employee Login Accounts</h2>
 
                             <p>
                                 Manage login access for existing employees.
                             </p>
-
                         </div>
 
                         <span>
@@ -413,7 +442,6 @@ const StaffIdPassword = () => {
                             <table className="staff-table">
 
                                 <thead>
-
                                 <tr>
                                     <th>Employee ID</th>
                                     <th>Employee Name</th>
@@ -422,7 +450,6 @@ const StaffIdPassword = () => {
                                     <th>Login Status</th>
                                     <th>Action</th>
                                 </tr>
-
                                 </thead>
 
                                 <tbody>
@@ -458,11 +485,9 @@ const StaffIdPassword = () => {
                                                             : "staff-status inactive"
                                                     }
                                                 >
-
                                                     {employee.hasLogin
                                                         ? "Already Created"
                                                         : "Not Created"}
-
                                                 </span>
 
                                         </td>
@@ -507,7 +532,7 @@ const StaffIdPassword = () => {
 
                 </div>
 
-                {/* CREATE STAFF MODAL */}
+                {/* CREATE STAFF LOGIN MODAL */}
 
                 {showForm && (
 
@@ -520,13 +545,11 @@ const StaffIdPassword = () => {
                             <div className="staff-modal-header">
 
                                 <div>
-
                                     <h2>Create Staff Login</h2>
 
                                     <p>
                                         Set login credentials for an existing employee.
                                     </p>
-
                                 </div>
 
                                 <button
@@ -540,17 +563,17 @@ const StaffIdPassword = () => {
 
                             </div>
 
+                            {/* FORM */}
+
                             <form
                                 className="staff-form"
                                 onSubmit={handleCreateStaff}
                             >
 
                                 {error && (
-
                                     <div className="staff-form-error">
                                         {error}
                                     </div>
-
                                 )}
 
                                 <div className="staff-form-grid">
@@ -563,7 +586,7 @@ const StaffIdPassword = () => {
 
                                         <input
                                             type="text"
-                                            value={selectedEmployeeId}
+                                            value={formData.employeeId}
                                             readOnly
                                         />
 
@@ -617,7 +640,7 @@ const StaffIdPassword = () => {
 
                                     </div>
 
-                                    {/* USERNAME */}
+                                    {/* LOGIN USERNAME */}
 
                                     <div className="staff-field">
 
@@ -635,39 +658,85 @@ const StaffIdPassword = () => {
 
                                     </div>
 
-                                    {/* PASSWORD */}
+                                    {/* PASSWORD WITH SHOW/HIDE */}
 
                                     <div className="staff-field">
 
                                         <label>Password *</label>
 
-                                        <input
-                                            type="password"
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            placeholder="Enter password"
-                                            autoComplete="new-password"
-                                            required
-                                        />
+                                        <div className="staff-password-wrapper">
+
+                                            <input
+                                                type={
+                                                    showPassword
+                                                        ? "text"
+                                                        : "password"
+                                                }
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                placeholder="Enter password"
+                                                autoComplete="new-password"
+                                                required
+                                            />
+
+                                            <button
+                                                type="button"
+                                                className="staff-password-toggle"
+                                                onClick={() =>
+                                                    setShowPassword(previous => !previous)
+                                                }
+                                                aria-label={
+                                                    showPassword
+                                                        ? "Hide password"
+                                                        : "Show password"
+                                                }
+                                            >
+                                                {showPassword ? "Hide" : "Show"}
+                                            </button>
+
+                                        </div>
 
                                     </div>
 
-                                    {/* CONFIRM PASSWORD */}
+                                    {/* CONFIRM PASSWORD WITH SHOW/HIDE */}
 
                                     <div className="staff-field">
 
                                         <label>Confirm Password *</label>
 
-                                        <input
-                                            type="password"
-                                            name="confirmPassword"
-                                            value={formData.confirmPassword}
-                                            onChange={handleChange}
-                                            placeholder="Confirm password"
-                                            autoComplete="new-password"
-                                            required
-                                        />
+                                        <div className="staff-password-wrapper">
+
+                                            <input
+                                                type={
+                                                    showConfirmPassword
+                                                        ? "text"
+                                                        : "password"
+                                                }
+                                                name="confirmPassword"
+                                                value={formData.confirmPassword}
+                                                onChange={handleChange}
+                                                placeholder="Confirm password"
+                                                autoComplete="new-password"
+                                                required
+                                            />
+
+                                            <button
+                                                type="button"
+                                                className="staff-password-toggle"
+                                                onClick={() =>
+                                                    setShowConfirmPassword(previous => !previous)
+                                                }
+                                                aria-label={
+                                                    showConfirmPassword
+                                                        ? "Hide confirm password"
+                                                        : "Show confirm password"
+                                                }
+                                            >
+                                                {showConfirmPassword ? "Hide" : "Show"}
+                                            </button>
+
+                                        </div>
 
                                     </div>
 
@@ -695,11 +764,9 @@ const StaffIdPassword = () => {
                                             selectedEmployee.hasLogin
                                         }
                                     >
-
                                         {saving
                                             ? "Creating..."
                                             : "Create Staff Login"}
-
                                     </button>
 
                                 </div>
