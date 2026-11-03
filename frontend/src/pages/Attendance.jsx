@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Attendance.css";
-
+import LeaveManagement from "./LeaveManagement";
 const API_URL = import.meta.env.VITE_API_BASE_URL + "/attendance";
 const EMPLOYEE_API_URL = import.meta.env.VITE_API_BASE_URL + "/employees";
 
@@ -93,6 +93,8 @@ const getStatusClass = (status) => {
 };
 
 function Attendance() {
+
+    const [activeTab, setActiveTab] = useState("ATTENDANCE");
 
     const [attendance, setAttendance] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -842,397 +844,419 @@ function Attendance() {
                 Attendance
             </div>
 
-            <div className="attendance-header">
+            <div className="attendance-module-tabs">
+                <button
+                    type="button"
+                    className={activeTab === "ATTENDANCE" ? "active" : ""}
+                    onClick={() => setActiveTab("ATTENDANCE")}
+                >
+                    Attendance
+                </button>
 
-                <div>
-                    <h1>Attendance</h1>
-
-                    <p>
-                        Manage employee attendance,
-                        punch records and corrections.
-                    </p>
-                </div>
-
-                <div className="attendance-header-actions">
-
-                    <button
-                        type="button"
-                        className="attendance-refresh-btn"
-                        onClick={() => {
-                            clearMessages();
-                            loadAttendance();
-                        }}
-                    >
-                        ↻ Refresh
-                    </button>
-
-                    <button
-                        type="button"
-                        className="attendance-add-btn"
-                        onClick={openAddModal}
-                    >
-                        <span>+</span>
-                        Add Attendance
-                    </button>
-
-                </div>
-
+                <button
+                    type="button"
+                    className={activeTab === "LEAVE" ? "active" : ""}
+                    onClick={() => setActiveTab("LEAVE")}
+                >
+                    Leave Management
+                </button>
             </div>
 
-            {/* MESSAGES */}
+            {activeTab === "LEAVE" ? (
+                <LeaveManagement />
+            ) : (
+                <>
+                    <div className="attendance-header">
 
-            {success && (
-                <div className="attendance-alert success">
-                    <span>✓</span>
-                    {success}
-                    <button
-                        type="button"
-                        onClick={() => setSuccess("")}
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
+                        <div>
+                            <h1>Attendance</h1>
 
-            {error && (
-                <div className="attendance-alert error">
-                    <span>!</span>
-                    {error}
-                    <button
-                        type="button"
-                        onClick={() => setError("")}
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
-
-            {/* STATISTICS */}
-
-            <div className="attendance-stat-grid">
-
-                <div className="attendance-stat-card">
-
-                    <div className="stat-icon total">
-                        👥
-                    </div>
-
-                    <div>
-                        <div className="stat-label">
-                            Attendance Records
+                            <p>
+                                Manage employee attendance,
+                                punch records and corrections.
+                            </p>
                         </div>
 
-                        <div className="stat-value">
-                            {statistics.total}
-                        </div>
-                    </div>
+                        <div className="attendance-header-actions">
 
-                </div>
+                            <button
+                                type="button"
+                                className="attendance-refresh-btn"
+                                onClick={() => {
+                                    clearMessages();
+                                    loadAttendance();
+                                }}
+                            >
+                                ↻ Refresh
+                            </button>
 
-                <div className="attendance-stat-card">
+                            <button
+                                type="button"
+                                className="attendance-add-btn"
+                                onClick={openAddModal}
+                            >
+                                <span>+</span>
+                                Add Attendance
+                            </button>
 
-                    <div className="stat-icon present">
-                        ✓
-                    </div>
-
-                    <div>
-                        <div className="stat-label">
-                            Present
-                        </div>
-
-                        <div className="stat-value">
-                            {statistics.present}
-                        </div>
-                    </div>
-
-                </div>
-
-                <div className="attendance-stat-card">
-
-                    <div className="stat-icon absent">
-                        ×
-                    </div>
-
-                    <div>
-                        <div className="stat-label">
-                            Absent
                         </div>
 
-                        <div className="stat-value">
-                            {statistics.absent}
-                        </div>
                     </div>
 
-                </div>
+                    {/* MESSAGES */}
 
-                <div className="attendance-stat-card">
+                    {success && (
+                        <div className="attendance-alert success">
+                            <span>✓</span>
+                            {success}
+                            <button
+                                type="button"
+                                onClick={() => setSuccess("")}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    )}
 
-                    <div className="stat-icon missing">
-                        !
-                    </div>
+                    {error && (
+                        <div className="attendance-alert error">
+                            <span>!</span>
+                            {error}
+                            <button
+                                type="button"
+                                onClick={() => setError("")}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    )}
 
-                    <div>
-                        <div className="stat-label">
-                            Missing Punch
+                    {/* STATISTICS */}
+
+                    <div className="attendance-stat-grid">
+
+                        <div className="attendance-stat-card">
+
+                            <div className="stat-icon total">
+                                👥
+                            </div>
+
+                            <div>
+                                <div className="stat-label">
+                                    Attendance Records
+                                </div>
+
+                                <div className="stat-value">
+                                    {statistics.total}
+                                </div>
+                            </div>
+
                         </div>
 
-                        <div className="stat-value">
-                            {statistics.missingPunch}
+                        <div className="attendance-stat-card">
+
+                            <div className="stat-icon present">
+                                ✓
+                            </div>
+
+                            <div>
+                                <div className="stat-label">
+                                    Present
+                                </div>
+
+                                <div className="stat-value">
+                                    {statistics.present}
+                                </div>
+                            </div>
+
                         </div>
+
+                        <div className="attendance-stat-card">
+
+                            <div className="stat-icon absent">
+                                ×
+                            </div>
+
+                            <div>
+                                <div className="stat-label">
+                                    Absent
+                                </div>
+
+                                <div className="stat-value">
+                                    {statistics.absent}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div className="attendance-stat-card">
+
+                            <div className="stat-icon missing">
+                                !
+                            </div>
+
+                            <div>
+                                <div className="stat-label">
+                                    Missing Punch
+                                </div>
+
+                                <div className="stat-value">
+                                    {statistics.missingPunch}
+                                </div>
+                            </div>
+
+                        </div>
+
                     </div>
 
-                </div>
+                    {/* TABLE CARD */}
 
-            </div>
+                    <div className="attendance-card">
 
-            {/* TABLE CARD */}
+                        {/* FILTER BAR */}
 
-            <div className="attendance-card">
+                        <div className="attendance-filter-bar">
 
-                {/* FILTER BAR */}
-
-                <div className="attendance-filter-bar">
-
-                    <div className="attendance-search">
+                            <div className="attendance-search">
 
                         <span className="search-icon">
                             ⌕
                         </span>
 
-                        <input
-                            type="text"
-                            placeholder="Search by employee ID or name"
-                            value={search}
-                            onChange={(event) =>
-                                setSearch(
-                                    event.target.value
-                                )
-                            }
-                        />
+                                <input
+                                    type="text"
+                                    placeholder="Search by employee ID or name"
+                                    value={search}
+                                    onChange={(event) =>
+                                        setSearch(
+                                            event.target.value
+                                        )
+                                    }
+                                />
 
-                    </div>
+                            </div>
 
-                    <input
-                        type="date"
-                        className="attendance-date-filter"
-                        value={dateFilter}
-                        onChange={(event) =>
-                            setDateFilter(
-                                event.target.value
-                            )
-                        }
-                    />
+                            <input
+                                type="date"
+                                className="attendance-date-filter"
+                                value={dateFilter}
+                                onChange={(event) =>
+                                    setDateFilter(
+                                        event.target.value
+                                    )
+                                }
+                            />
 
-                    <select
-                        value={departmentFilter}
-                        onChange={(event) =>
-                            setDepartmentFilter(
-                                event.target.value
-                            )
-                        }
-                    >
-                        <option value="">
-                            All Departments
-                        </option>
-
-                        {departments.map(
-                            (department) => (
-                                <option
-                                    key={department}
-                                    value={department}
-                                >
-                                    {department}
+                            <select
+                                value={departmentFilter}
+                                onChange={(event) =>
+                                    setDepartmentFilter(
+                                        event.target.value
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    All Departments
                                 </option>
-                            )
-                        )}
-                    </select>
 
-                    <select
-                        value={statusFilter}
-                        onChange={(event) =>
-                            setStatusFilter(
-                                event.target.value
-                            )
-                        }
-                    >
-                        <option value="">
-                            All Status
-                        </option>
+                                {departments.map(
+                                    (department) => (
+                                        <option
+                                            key={department}
+                                            value={department}
+                                        >
+                                            {department}
+                                        </option>
+                                    )
+                                )}
+                            </select>
 
-                        {STATUS_OPTIONS.map(
-                            (status) => (
-                                <option
-                                    key={status}
-                                    value={status}
-                                >
-                                    {formatStatus(status)}
+                            <select
+                                value={statusFilter}
+                                onChange={(event) =>
+                                    setStatusFilter(
+                                        event.target.value
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    All Status
                                 </option>
-                            )
-                        )}
-                    </select>
 
-                </div>
+                                {STATUS_OPTIONS.map(
+                                    (status) => (
+                                        <option
+                                            key={status}
+                                            value={status}
+                                        >
+                                            {formatStatus(status)}
+                                        </option>
+                                    )
+                                )}
+                            </select>
 
-                {/* TABLE */}
+                        </div>
 
-                <div className="attendance-table-wrapper">
+                        {/* TABLE */}
 
-                    <table className="attendance-table">
+                        <div className="attendance-table-wrapper">
 
-                        <thead>
+                            <table className="attendance-table">
 
-                        <tr>
+                                <thead>
 
-                            <th>EMPLOYEE</th>
+                                <tr>
 
-                            <th>DEPARTMENT</th>
+                                    <th>EMPLOYEE</th>
 
-                            <th>DATE</th>
+                                    <th>DEPARTMENT</th>
 
-                            <th>PUNCH IN</th>
+                                    <th>DATE</th>
 
-                            <th>PUNCH OUT</th>
+                                    <th>PUNCH IN</th>
 
-                            <th>WORKING HOURS</th>
+                                    <th>PUNCH OUT</th>
 
-                            <th>STATUS</th>
+                                    <th>WORKING HOURS</th>
 
-                            <th>ACTION</th>
+                                    <th>STATUS</th>
 
-                        </tr>
+                                    <th>ACTION</th>
 
-                        </thead>
+                                </tr>
 
-                        <tbody>
+                                </thead>
 
-                        {loading ? (
+                                <tbody>
 
-                            <tr>
+                                {loading ? (
 
-                                <td
-                                    colSpan="8"
-                                    className="attendance-empty"
-                                >
-                                    <div className="loading-spinner">
-                                    </div>
+                                    <tr>
 
-                                    Loading attendance...
-                                </td>
+                                        <td
+                                            colSpan="8"
+                                            className="attendance-empty"
+                                        >
+                                            <div className="loading-spinner">
+                                            </div>
 
-                            </tr>
+                                            Loading attendance...
+                                        </td>
 
-                        ) : filteredAttendance.length === 0 ? (
+                                    </tr>
 
-                            <tr>
+                                ) : filteredAttendance.length === 0 ? (
 
-                                <td
-                                    colSpan="8"
-                                    className="attendance-empty"
-                                >
-                                    <div className="empty-icon">
-                                        📅
-                                    </div>
+                                    <tr>
 
-                                    <strong>
-                                        No attendance records found
-                                    </strong>
+                                        <td
+                                            colSpan="8"
+                                            className="attendance-empty"
+                                        >
+                                            <div className="empty-icon">
+                                                📅
+                                            </div>
 
-                                    <span>
+                                            <strong>
+                                                No attendance records found
+                                            </strong>
+
+                                            <span>
                                             Add an attendance
                                             record or change
                                             your filters.
                                         </span>
 
-                                </td>
-
-                            </tr>
-
-                        ) : (
-
-                            filteredAttendance.map(
-                                (record) => (
-
-                                    <tr
-                                        key={record.id}
-                                    >
-
-                                        <td>
-
-                                            <div className="employee-cell">
-
-                                                <div className="employee-avatar">
-                                                    {(
-                                                        record.employeeId ||
-                                                        "E"
-                                                    )
-                                                        .charAt(0)
-                                                        .toUpperCase()}
-                                                </div>
-
-                                                <div>
-
-                                                    <div className="employee-id">
-                                                        {record.employeeId ||
-                                                            "—"}
-                                                    </div>
-
-                                                    <div className="employee-name">
-                                                        {record.employeeName ||
-                                                            "Employee"}
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
                                         </td>
 
-                                        <td>
+                                    </tr>
 
-                                            {record.department ? (
-                                                <span className="department-badge">
+                                ) : (
+
+                                    filteredAttendance.map(
+                                        (record) => (
+
+                                            <tr
+                                                key={record.id}
+                                            >
+
+                                                <td>
+
+                                                    <div className="employee-cell">
+
+                                                        <div className="employee-avatar">
+                                                            {(
+                                                                record.employeeId ||
+                                                                "E"
+                                                            )
+                                                                .charAt(0)
+                                                                .toUpperCase()}
+                                                        </div>
+
+                                                        <div>
+
+                                                            <div className="employee-id">
+                                                                {record.employeeId ||
+                                                                    "—"}
+                                                            </div>
+
+                                                            <div className="employee-name">
+                                                                {record.employeeName ||
+                                                                    "Employee"}
+                                                            </div>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </td>
+
+                                                <td>
+
+                                                    {record.department ? (
+                                                        <span className="department-badge">
                                                         {
                                                             record.department
                                                         }
                                                     </span>
-                                            ) : (
-                                                <span className="dash">
+                                                    ) : (
+                                                        <span className="dash">
                                                         —
                                                     </span>
-                                            )}
+                                                    )}
 
-                                        </td>
+                                                </td>
 
-                                        <td>
-                                            {formatDate(
-                                                record.attendanceDate
-                                            )}
-                                        </td>
+                                                <td>
+                                                    {formatDate(
+                                                        record.attendanceDate
+                                                    )}
+                                                </td>
 
-                                        <td>
-                                            {formatTime(
-                                                record.punchIn
-                                            )}
-                                        </td>
+                                                <td>
+                                                    {formatTime(
+                                                        record.punchIn
+                                                    )}
+                                                </td>
 
-                                        <td>
-                                            {formatTime(
-                                                record.punchOut
-                                            )}
-                                        </td>
+                                                <td>
+                                                    {formatTime(
+                                                        record.punchOut
+                                                    )}
+                                                </td>
 
-                                        <td>
+                                                <td>
 
-                                            {record.workingHours !==
-                                            null &&
-                                            record.workingHours !==
-                                            undefined
-                                                ? `${record.workingHours} hrs`
-                                                : "—"}
+                                                    {record.workingHours !==
+                                                    null &&
+                                                    record.workingHours !==
+                                                    undefined
+                                                        ? `${record.workingHours} hrs`
+                                                        : "—"}
 
-                                        </td>
+                                                </td>
 
-                                        <td>
+                                                <td>
 
                                                 <span
                                                     className={getStatusClass(
@@ -1249,491 +1273,491 @@ function Attendance() {
 
                                                 </span>
 
-                                        </td>
+                                                </td>
 
-                                        <td>
+                                                <td>
 
-                                            <div className="action-buttons">
+                                                    <div className="action-buttons">
 
-                                                <button
-                                                    type="button"
-                                                    className="view-btn"
-                                                    onClick={() =>
-                                                        openViewModal(
-                                                            record
-                                                        )
+                                                        <button
+                                                            type="button"
+                                                            className="view-btn"
+                                                            onClick={() =>
+                                                                openViewModal(
+                                                                    record
+                                                                )
+                                                            }
+                                                        >
+                                                            View
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className="edit-btn"
+                                                            onClick={() =>
+                                                                openEditModal(
+                                                                    record
+                                                                )
+                                                            }
+                                                        >
+                                                            Edit
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className="delete-btn"
+                                                            onClick={() =>
+                                                                setDeleteTarget(
+                                                                    record
+                                                                )
+                                                            }
+                                                        >
+                                                            Delete
+                                                        </button>
+
+                                                    </div>
+
+                                                </td>
+
+                                            </tr>
+
+                                        )
+                                    )
+                                )}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        {/* TABLE FOOTER */}
+
+                        {!loading &&
+                            filteredAttendance.length > 0 && (
+                                <div className="attendance-table-footer">
+
+                                    Showing{" "}
+                                    <strong>
+                                        {filteredAttendance.length}
+                                    </strong>{" "}
+                                    of{" "}
+                                    <strong>
+                                        {attendance.length}
+                                    </strong>{" "}
+                                    attendance records
+
+                                </div>
+                            )}
+
+                    </div>
+
+                    {/* ADD / EDIT MODAL */}
+
+                    {showModal && (
+
+                        <div
+                            className="attendance-modal-overlay"
+                            onMouseDown={(event) => {
+
+                                if (
+                                    event.target ===
+                                    event.currentTarget
+                                ) {
+                                    setShowModal(false);
+                                }
+
+                            }}
+                        >
+
+                            <div className="attendance-modal">
+
+                                <div className="attendance-modal-header">
+
+                                    <div>
+
+                                        <h2>
+                                            {editingId
+                                                ? "Edit Attendance"
+                                                : "Add Attendance"}
+                                        </h2>
+
+                                        <p>
+                                            {editingId
+                                                ? "Update the employee attendance record."
+                                                : "Create a new employee attendance record."}
+                                        </p>
+
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="modal-close"
+                                        onClick={() =>
+                                            setShowModal(false)
+                                        }
+                                    >
+                                        ×
+                                    </button>
+
+                                </div>
+
+                                <form
+                                    onSubmit={handleSubmit}
+                                    className="attendance-form"
+                                >
+
+                                    <div className="form-grid">
+
+                                        <div className="form-group">
+
+                                            <label>
+                                                Employee
+                                                <span>*</span>
+                                            </label>
+
+                                            <select
+                                                name="employeeId"
+                                                value={form.employeeId}
+                                                onChange={handleChange}
+                                                disabled={
+                                                    employeeLoading
+                                                }
+                                                required
+                                            >
+
+                                                <option value="">
+                                                    {employeeLoading
+                                                        ? "Loading employees..."
+                                                        : "Select Employee"}
+                                                </option>
+
+                                                {employees.map(
+                                                    (employee) => {
+
+                                                        const employeeId =
+                                                            employee.employeeId;
+
+                                                        if (!employeeId) {
+                                                            return null;
+                                                        }
+
+                                                        return (
+                                                            <option
+                                                                key={
+                                                                    employee.id ||
+                                                                    employeeId
+                                                                }
+                                                                value={
+                                                                    employeeId
+                                                                }
+                                                            >
+                                                                {employeeId}
+                                                                {employee.name
+                                                                    ? ` - ${employee.name}`
+                                                                    : employee.employeeName
+                                                                        ? ` - ${employee.employeeName}`
+                                                                        : ""}
+                                                            </option>
+                                                        );
                                                     }
-                                                >
-                                                    View
-                                                </button>
+                                                )}
 
-                                                <button
-                                                    type="button"
-                                                    className="edit-btn"
-                                                    onClick={() =>
-                                                        openEditModal(
-                                                            record
-                                                        )
-                                                    }
-                                                >
-                                                    Edit
-                                                </button>
+                                            </select>
 
-                                                <button
-                                                    type="button"
-                                                    className="delete-btn"
-                                                    onClick={() =>
-                                                        setDeleteTarget(
-                                                            record
-                                                        )
-                                                    }
-                                                >
-                                                    Delete
-                                                </button>
+                                        </div>
 
-                                            </div>
+                                        <div className="form-group">
 
-                                        </td>
+                                            <label>
+                                                Attendance Date
+                                                <span>*</span>
+                                            </label>
 
-                                    </tr>
+                                            <input
+                                                type="date"
+                                                name="attendanceDate"
+                                                value={
+                                                    form.attendanceDate
+                                                }
+                                                onChange={handleChange}
+                                                required
+                                            />
 
-                                )
-                            )
-                        )}
+                                        </div>
 
-                        </tbody>
+                                        <div className="form-group">
 
-                    </table>
+                                            <label>
+                                                Punch In
+                                            </label>
 
-                </div>
+                                            <input
+                                                type="time"
+                                                name="punchIn"
+                                                value={
+                                                    form.punchIn
+                                                }
+                                                onChange={handleChange}
+                                            />
 
-                {/* TABLE FOOTER */}
+                                        </div>
 
-                {!loading &&
-                    filteredAttendance.length > 0 && (
-                        <div className="attendance-table-footer">
+                                        <div className="form-group">
 
-                            Showing{" "}
-                            <strong>
-                                {filteredAttendance.length}
-                            </strong>{" "}
-                            of{" "}
-                            <strong>
-                                {attendance.length}
-                            </strong>{" "}
-                            attendance records
+                                            <label>
+                                                Punch Out
+                                            </label>
+
+                                            <input
+                                                type="time"
+                                                name="punchOut"
+                                                value={
+                                                    form.punchOut
+                                                }
+                                                onChange={handleChange}
+                                            />
+
+                                        </div>
+
+                                        <div className="form-group">
+
+                                            <label>
+                                                Status
+                                            </label>
+
+                                            <select
+                                                name="status"
+                                                value={form.status}
+                                                onChange={handleChange}
+                                            >
+
+                                                {STATUS_OPTIONS.map(
+                                                    (status) => (
+                                                        <option
+                                                            key={status}
+                                                            value={status}
+                                                        >
+                                                            {formatStatus(
+                                                                status
+                                                            )}
+                                                        </option>
+                                                    )
+                                                )}
+
+                                            </select>
+
+                                        </div>
+
+                                        <div className="form-group full-width">
+
+                                            <label>
+                                                Correction Reason
+                                            </label>
+
+                                            <textarea
+                                                name="correctionReason"
+                                                value={
+                                                    form.correctionReason
+                                                }
+                                                onChange={handleChange}
+                                                placeholder="Enter reason if attendance is being corrected..."
+                                                rows="3"
+                                            />
+
+                                        </div>
+
+                                    </div>
+
+                                    <div className="attendance-form-note">
+
+                                        <strong>
+                                            Note:
+                                        </strong>{" "}
+                                        If Punch In or Punch Out is
+                                        missing, the record can be
+                                        corrected later by Admin.
+
+                                    </div>
+
+                                    <div className="attendance-modal-footer">
+
+                                        <button
+                                            type="button"
+                                            className="cancel-btn"
+                                            onClick={() =>
+                                                setShowModal(false)
+                                            }
+                                            disabled={saving}
+                                        >
+                                            Cancel
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            className="save-btn"
+                                            disabled={saving}
+                                        >
+
+                                            {saving
+                                                ? "Saving..."
+                                                : editingId
+                                                    ? "Update Attendance"
+                                                    : "Save Attendance"}
+
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                            </div>
 
                         </div>
                     )}
 
-            </div>
+                    {/* VIEW MODAL */}
 
-            {/* ADD / EDIT MODAL */}
+                    {showViewModal &&
+                        viewingRecord && (
 
-            {showModal && (
+                            <div
+                                className="attendance-modal-overlay"
+                                onMouseDown={(event) => {
 
-                <div
-                    className="attendance-modal-overlay"
-                    onMouseDown={(event) => {
+                                    if (
+                                        event.target ===
+                                        event.currentTarget
+                                    ) {
+                                        setShowViewModal(false);
+                                    }
 
-                        if (
-                            event.target ===
-                            event.currentTarget
-                        ) {
-                            setShowModal(false);
-                        }
-
-                    }}
-                >
-
-                    <div className="attendance-modal">
-
-                        <div className="attendance-modal-header">
-
-                            <div>
-
-                                <h2>
-                                    {editingId
-                                        ? "Edit Attendance"
-                                        : "Add Attendance"}
-                                </h2>
-
-                                <p>
-                                    {editingId
-                                        ? "Update the employee attendance record."
-                                        : "Create a new employee attendance record."}
-                                </p>
-
-                            </div>
-
-                            <button
-                                type="button"
-                                className="modal-close"
-                                onClick={() =>
-                                    setShowModal(false)
-                                }
+                                }}
                             >
-                                ×
-                            </button>
 
-                        </div>
+                                <div className="attendance-modal view-modal">
 
-                        <form
-                            onSubmit={handleSubmit}
-                            className="attendance-form"
-                        >
+                                    <div className="attendance-modal-header">
 
-                            <div className="form-grid">
+                                        <div>
 
-                                <div className="form-group">
+                                            <h2>
+                                                Attendance Details
+                                            </h2>
 
-                                    <label>
-                                        Employee
-                                        <span>*</span>
-                                    </label>
+                                            <p>
+                                                Complete attendance
+                                                information.
+                                            </p>
 
-                                    <select
-                                        name="employeeId"
-                                        value={form.employeeId}
-                                        onChange={handleChange}
-                                        disabled={
-                                            employeeLoading
-                                        }
-                                        required
-                                    >
+                                        </div>
 
-                                        <option value="">
-                                            {employeeLoading
-                                                ? "Loading employees..."
-                                                : "Select Employee"}
-                                        </option>
-
-                                        {employees.map(
-                                            (employee) => {
-
-                                                const employeeId =
-                                                    employee.employeeId;
-
-                                                if (!employeeId) {
-                                                    return null;
-                                                }
-
-                                                return (
-                                                    <option
-                                                        key={
-                                                            employee.id ||
-                                                            employeeId
-                                                        }
-                                                        value={
-                                                            employeeId
-                                                        }
-                                                    >
-                                                        {employeeId}
-                                                        {employee.name
-                                                            ? ` - ${employee.name}`
-                                                            : employee.employeeName
-                                                                ? ` - ${employee.employeeName}`
-                                                                : ""}
-                                                    </option>
-                                                );
+                                        <button
+                                            type="button"
+                                            className="modal-close"
+                                            onClick={() =>
+                                                setShowViewModal(
+                                                    false
+                                                )
                                             }
-                                        )}
+                                        >
+                                            ×
+                                        </button>
 
-                                    </select>
+                                    </div>
 
-                                </div>
+                                    <div className="attendance-details">
 
-                                <div className="form-group">
-
-                                    <label>
-                                        Attendance Date
-                                        <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="date"
-                                        name="attendanceDate"
-                                        value={
-                                            form.attendanceDate
-                                        }
-                                        onChange={handleChange}
-                                        required
-                                    />
-
-                                </div>
-
-                                <div className="form-group">
-
-                                    <label>
-                                        Punch In
-                                    </label>
-
-                                    <input
-                                        type="time"
-                                        name="punchIn"
-                                        value={
-                                            form.punchIn
-                                        }
-                                        onChange={handleChange}
-                                    />
-
-                                </div>
-
-                                <div className="form-group">
-
-                                    <label>
-                                        Punch Out
-                                    </label>
-
-                                    <input
-                                        type="time"
-                                        name="punchOut"
-                                        value={
-                                            form.punchOut
-                                        }
-                                        onChange={handleChange}
-                                    />
-
-                                </div>
-
-                                <div className="form-group">
-
-                                    <label>
-                                        Status
-                                    </label>
-
-                                    <select
-                                        name="status"
-                                        value={form.status}
-                                        onChange={handleChange}
-                                    >
-
-                                        {STATUS_OPTIONS.map(
-                                            (status) => (
-                                                <option
-                                                    key={status}
-                                                    value={status}
-                                                >
-                                                    {formatStatus(
-                                                        status
-                                                    )}
-                                                </option>
-                                            )
-                                        )}
-
-                                    </select>
-
-                                </div>
-
-                                <div className="form-group full-width">
-
-                                    <label>
-                                        Correction Reason
-                                    </label>
-
-                                    <textarea
-                                        name="correctionReason"
-                                        value={
-                                            form.correctionReason
-                                        }
-                                        onChange={handleChange}
-                                        placeholder="Enter reason if attendance is being corrected..."
-                                        rows="3"
-                                    />
-
-                                </div>
-
-                            </div>
-
-                            <div className="attendance-form-note">
-
-                                <strong>
-                                    Note:
-                                </strong>{" "}
-                                If Punch In or Punch Out is
-                                missing, the record can be
-                                corrected later by Admin.
-
-                            </div>
-
-                            <div className="attendance-modal-footer">
-
-                                <button
-                                    type="button"
-                                    className="cancel-btn"
-                                    onClick={() =>
-                                        setShowModal(false)
-                                    }
-                                    disabled={saving}
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="save-btn"
-                                    disabled={saving}
-                                >
-
-                                    {saving
-                                        ? "Saving..."
-                                        : editingId
-                                            ? "Update Attendance"
-                                            : "Save Attendance"}
-
-                                </button>
-
-                            </div>
-
-                        </form>
-
-                    </div>
-
-                </div>
-            )}
-
-            {/* VIEW MODAL */}
-
-            {showViewModal &&
-                viewingRecord && (
-
-                    <div
-                        className="attendance-modal-overlay"
-                        onMouseDown={(event) => {
-
-                            if (
-                                event.target ===
-                                event.currentTarget
-                            ) {
-                                setShowViewModal(false);
-                            }
-
-                        }}
-                    >
-
-                        <div className="attendance-modal view-modal">
-
-                            <div className="attendance-modal-header">
-
-                                <div>
-
-                                    <h2>
-                                        Attendance Details
-                                    </h2>
-
-                                    <p>
-                                        Complete attendance
-                                        information.
-                                    </p>
-
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="modal-close"
-                                    onClick={() =>
-                                        setShowViewModal(
-                                            false
-                                        )
-                                    }
-                                >
-                                    ×
-                                </button>
-
-                            </div>
-
-                            <div className="attendance-details">
-
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Employee ID
                                     </span>
 
-                                    <strong>
-                                        {viewingRecord.employeeId ||
-                                            "—"}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {viewingRecord.employeeId ||
+                                                    "—"}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Employee Name
                                     </span>
 
-                                    <strong>
-                                        {viewingRecord.employeeName ||
-                                            "—"}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {viewingRecord.employeeName ||
+                                                    "—"}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Department
                                     </span>
 
-                                    <strong>
-                                        {viewingRecord.department ||
-                                            "—"}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {viewingRecord.department ||
+                                                    "—"}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Date
                                     </span>
 
-                                    <strong>
-                                        {formatDate(
-                                            viewingRecord.attendanceDate
-                                        )}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {formatDate(
+                                                    viewingRecord.attendanceDate
+                                                )}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Punch In
                                     </span>
 
-                                    <strong>
-                                        {formatTime(
-                                            viewingRecord.punchIn
-                                        )}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {formatTime(
+                                                    viewingRecord.punchIn
+                                                )}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Punch Out
                                     </span>
 
-                                    <strong>
-                                        {formatTime(
-                                            viewingRecord.punchOut
-                                        )}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {formatTime(
+                                                    viewingRecord.punchOut
+                                                )}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Working Hours
                                     </span>
 
-                                    <strong>
-                                        {viewingRecord.workingHours !==
-                                        null &&
-                                        viewingRecord.workingHours !==
-                                        undefined
-                                            ? `${viewingRecord.workingHours} hrs`
-                                            : "—"}
-                                    </strong>
-                                </div>
+                                            <strong>
+                                                {viewingRecord.workingHours !==
+                                                null &&
+                                                viewingRecord.workingHours !==
+                                                undefined
+                                                    ? `${viewingRecord.workingHours} hrs`
+                                                    : "—"}
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item">
+                                        <div className="detail-item">
                                     <span>
                                         Status
                                     </span>
 
-                                    <strong>
+                                            <strong>
 
                                         <span
                                             className={getStatusClass(
@@ -1748,136 +1772,139 @@ function Attendance() {
                                             )}
                                         </span>
 
-                                    </strong>
-                                </div>
+                                            </strong>
+                                        </div>
 
-                                <div className="detail-item full-width">
+                                        <div className="detail-item full-width">
                                     <span>
                                         Correction Reason
                                     </span>
 
+                                            <strong>
+                                                {viewingRecord.correctionReason ||
+                                                    "No correction reason"}
+                                            </strong>
+                                        </div>
+
+                                    </div>
+
+                                    <div className="attendance-modal-footer">
+
+                                        <button
+                                            type="button"
+                                            className="cancel-btn"
+                                            onClick={() =>
+                                                setShowViewModal(
+                                                    false
+                                                )
+                                            }
+                                        >
+                                            Close
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="save-btn"
+                                            onClick={() => {
+
+                                                setShowViewModal(
+                                                    false
+                                                );
+
+                                                openEditModal(
+                                                    viewingRecord
+                                                );
+
+                                            }}
+                                        >
+                                            Edit Record
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        )}
+
+                    {/* DELETE MODAL */}
+
+                    {deleteTarget && (
+
+                        <div
+                            className="attendance-modal-overlay"
+                            onMouseDown={(event) => {
+
+                                if (
+                                    event.target ===
+                                    event.currentTarget
+                                ) {
+                                    setDeleteTarget(null);
+                                }
+
+                            }}
+                        >
+
+                            <div className="delete-modal">
+
+                                <div className="delete-icon">
+                                    !
+                                </div>
+
+                                <h2>
+                                    Delete Attendance?
+                                </h2>
+
+                                <p>
+                                    Are you sure you want to
+                                    delete the attendance record
+                                    for{" "}
                                     <strong>
-                                        {viewingRecord.correctionReason ||
-                                            "No correction reason"}
+                                        {deleteTarget.employeeId}
+                                    </strong>{" "}
+                                    on{" "}
+                                    <strong>
+                                        {formatDate(
+                                            deleteTarget.attendanceDate
+                                        )}
                                     </strong>
+                                    ?
+                                </p>
+
+                                <div className="delete-modal-actions">
+
+                                    <button
+                                        type="button"
+                                        className="cancel-btn"
+                                        onClick={() =>
+                                            setDeleteTarget(
+                                                null
+                                            )
+                                        }
+                                        disabled={deleting}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="confirm-delete-btn"
+                                        onClick={handleDelete}
+                                        disabled={deleting}
+                                    >
+                                        {deleting
+                                            ? "Deleting..."
+                                            : "Delete"}
+                                    </button>
+
                                 </div>
 
                             </div>
 
-                            <div className="attendance-modal-footer">
-
-                                <button
-                                    type="button"
-                                    className="cancel-btn"
-                                    onClick={() =>
-                                        setShowViewModal(
-                                            false
-                                        )
-                                    }
-                                >
-                                    Close
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="save-btn"
-                                    onClick={() => {
-
-                                        setShowViewModal(
-                                            false
-                                        );
-
-                                        openEditModal(
-                                            viewingRecord
-                                        );
-
-                                    }}
-                                >
-                                    Edit Record
-                                </button>
-
-                            </div>
-
                         </div>
+                    )}
 
-                    </div>
-                )}
-
-            {/* DELETE MODAL */}
-
-            {deleteTarget && (
-
-                <div
-                    className="attendance-modal-overlay"
-                    onMouseDown={(event) => {
-
-                        if (
-                            event.target ===
-                            event.currentTarget
-                        ) {
-                            setDeleteTarget(null);
-                        }
-
-                    }}
-                >
-
-                    <div className="delete-modal">
-
-                        <div className="delete-icon">
-                            !
-                        </div>
-
-                        <h2>
-                            Delete Attendance?
-                        </h2>
-
-                        <p>
-                            Are you sure you want to
-                            delete the attendance record
-                            for{" "}
-                            <strong>
-                                {deleteTarget.employeeId}
-                            </strong>{" "}
-                            on{" "}
-                            <strong>
-                                {formatDate(
-                                    deleteTarget.attendanceDate
-                                )}
-                            </strong>
-                            ?
-                        </p>
-
-                        <div className="delete-modal-actions">
-
-                            <button
-                                type="button"
-                                className="cancel-btn"
-                                onClick={() =>
-                                    setDeleteTarget(
-                                        null
-                                    )
-                                }
-                                disabled={deleting}
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                type="button"
-                                className="confirm-delete-btn"
-                                onClick={handleDelete}
-                                disabled={deleting}
-                            >
-                                {deleting
-                                    ? "Deleting..."
-                                    : "Delete"}
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
+                </>
             )}
 
         </div>

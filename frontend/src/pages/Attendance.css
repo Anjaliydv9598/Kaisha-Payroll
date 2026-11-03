@@ -1100,3 +1100,33 @@
         padding: 22px;
     }
 }
+.attendance-module-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.attendance-module-tabs button {
+    padding: 11px 18px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.attendance-module-tabs button:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+.attendance-module-tabs button.active {
+    background: #eaf1ff;
+    color: #2563eb;
+}

@@ -6,6 +6,7 @@ const AdminNavbar = () => {
     return (
         <nav className="admin-navbar">
             <div className="admin-navbar-left">
+
                 <NavLink to="/admin/company" className="admin-nav-link">
                     Company
                 </NavLink>
@@ -45,10 +46,10 @@ const AdminNavbar = () => {
                 <NavLink to="/admin/help-support" className="admin-nav-link">
                     Help & Support
                 </NavLink>
+
                 <NavLink to="/admin/calendar" className="admin-nav-link">
                     Calendar
                 </NavLink>
-
 
             </div>
         </nav>

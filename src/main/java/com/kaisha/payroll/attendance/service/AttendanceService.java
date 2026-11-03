@@ -28,19 +28,17 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
-    private final AttendanceDayRuleService attendanceDayRuleService;
 
     public AttendanceService(
             AttendanceRepository attendanceRepository,
             EmployeeRepository employeeRepository,
-            UserRepository userRepository,
-            AttendanceDayRuleService attendanceDayRuleService
+            UserRepository userRepository
     ) {
         this.attendanceRepository = attendanceRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
-        this.attendanceDayRuleService = attendanceDayRuleService;
     }
+
     // ---------------------------------------------------------
     // GET ALL
     // ---------------------------------------------------------
@@ -209,8 +207,6 @@ public class AttendanceService {
 
         attendance.setStatus(
                 determineStatus(
-                        employee,
-                        request.getAttendanceDate(),
                         request.getPunchIn(),
                         request.getPunchOut(),
                         request.getStatus()
@@ -302,8 +298,6 @@ public class AttendanceService {
 
         attendance.setStatus(
                 determineStatus(
-                        employee,
-                        request.getAttendanceDate(),
                         request.getPunchIn(),
                         request.getPunchOut(),
                         request.getStatus()
@@ -395,15 +389,15 @@ public class AttendanceService {
 
         attendance.setPunchIn(LocalTime.now());
 
-        attendance.setStatus(
-                determineStatus(
-                        employee,
-                        today,
-                        attendance.getPunchIn(),
-                        attendance.getPunchOut(),
-                        null
-                )
-        );
+        if (attendance.getPunchOut() != null) {
+            attendance.setStatus(
+                    AttendanceStatus.PRESENT
+            );
+        } else {
+            attendance.setStatus(
+                    AttendanceStatus.MISSING_PUNCH
+            );
+        }
 
         attendance.setModifiedBy(email);
         attendance.setModifiedAt(LocalDateTime.now());
@@ -456,13 +450,7 @@ public class AttendanceService {
         attendance.setPunchOut(LocalTime.now());
 
         attendance.setStatus(
-                determineStatus(
-                        attendance.getEmployee(),
-                        attendance.getAttendanceDate(),
-                        attendance.getPunchIn(),
-                        attendance.getPunchOut(),
-                        null
-                )
+                AttendanceStatus.PRESENT
         );
 
         attendance.setModifiedBy(email);
@@ -479,28 +467,52 @@ public class AttendanceService {
     // MISSING PUNCH -> ABSENT AT 11 PM
     // ---------------------------------------------------------
 
-    // ---------------------------------------------------------
-// MISSING PUNCH REVIEW AT 11 PM
-// Do not automatically mark records ABSENT.
-// Keep them pending for admin review.
-// ---------------------------------------------------------
-
     public int markMissingPunchesAbsent() {
 
         LocalDate today = LocalDate.now();
 
+        /*
+         * We need company IDs because Attendance is
+         * company-specific.
+         *
+         * The controller/admin can also trigger this manually.
+         */
         List<Attendance> records =
-                attendanceRepository.findAll()
+                attendanceRepository
+                        .findAll()
                         .stream()
-                        .filter(attendance ->
-                                today.equals(attendance.getAttendanceDate())
-                                        && attendance.getStatus()
-                                        == AttendanceStatus.MISSING_PUNCH
+                        .filter(a ->
+                                today.equals(
+                                        a.getAttendanceDate()
+                                )
+                                        &&
+                                        a.getStatus()
+                                                == AttendanceStatus.MISSING_PUNCH
                         )
                         .toList();
 
-        // Records remain MISSING_PUNCH until admin review.
-        return records.size();
+        int updated = 0;
+
+        for (Attendance attendance : records) {
+
+            attendance.setStatus(
+                    AttendanceStatus.ABSENT
+            );
+
+            attendance.setModifiedBy(
+                    "SYSTEM"
+            );
+
+            attendance.setModifiedAt(
+                    LocalDateTime.now()
+            );
+
+            attendanceRepository.save(attendance);
+
+            updated++;
+        }
+
+        return updated;
     }
 
     // ---------------------------------------------------------
@@ -528,28 +540,31 @@ public class AttendanceService {
         return user.getCompany();
     }
 
-    private Employee getEmployee(String employeeId, String companyId) {
-        if (employeeId == null || employeeId.trim().isEmpty()) {
-            throw new RuntimeException("Employee ID is required");
-        }
+    private Employee getEmployee(
+            String employeeId,
+            String companyId
+    ) {
 
-        Employee employee = employeeRepository
-                .findByEmployeeIdAndCompany_CompanyId(employeeId, companyId)
-                .orElseThrow(() ->
-                        new RuntimeException("Employee not found"));
+        if (employeeId == null ||
+                employeeId.isBlank()) {
 
-        if (!employee.isActive()) {
-            throw new RuntimeException("Inactive employees cannot record attendance");
-        }
-
-        if (!employee.isDetailsCompleted()) {
             throw new RuntimeException(
-                    "Complete employee details before recording attendance");
+                    "Employee ID is required"
+            );
         }
 
-        return employee;
+        return employeeRepository
+                .findByEmployeeIdAndCompany_CompanyId(
+                        employeeId.trim(),
+                        companyId
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Employee not found: "
+                                        + employeeId
+                        )
+                );
     }
-
 
     private void validateRequest(
             AttendanceRequest request
@@ -589,44 +604,33 @@ public class AttendanceService {
     }
 
     private AttendanceStatus determineStatus(
-            Employee employee,
-            LocalDate date,
             LocalTime punchIn,
             LocalTime punchOut,
             AttendanceStatus requestedStatus
     ) {
 
-        // Preserve explicitly selected admin statuses.
-        if (requestedStatus == AttendanceStatus.LEAVE
-                || requestedStatus == AttendanceStatus.HOLIDAY
-                || requestedStatus == AttendanceStatus.WEEK_OFF
-                || requestedStatus == AttendanceStatus.HALF_DAY
-                || requestedStatus == AttendanceStatus.ABSENT) {
+        /*
+         * Explicit statuses such as LEAVE/HOLIDAY/WEEK_OFF
+         * should be respected.
+         */
+        if (requestedStatus == AttendanceStatus.LEAVE ||
+                requestedStatus == AttendanceStatus.HOLIDAY ||
+                requestedStatus == AttendanceStatus.WEEK_OFF ||
+                requestedStatus == AttendanceStatus.HALF_DAY ||
+                requestedStatus == AttendanceStatus.ABSENT) {
 
             return requestedStatus;
         }
 
-        // Actual punches take priority over automatic day classification.
-        if (punchIn != null && punchOut != null) {
-            return AttendanceStatus.PRESENT;
+        if (punchIn == null) {
+            return AttendanceStatus.ABSENT;
         }
 
-        if (punchIn != null) {
+        if (punchOut == null) {
             return AttendanceStatus.MISSING_PUNCH;
         }
 
-        // Check company holidays and department weekly offs.
-        AttendanceStatus nonWorkingStatus =
-                attendanceDayRuleService.getNonWorkingDayStatus(
-                        employee,
-                        date
-                );
-
-        if (nonWorkingStatus != null) {
-            return nonWorkingStatus;
-        }
-
-        return AttendanceStatus.ABSENT;
+        return AttendanceStatus.PRESENT;
     }
 
     private void calculateWorkingHours(

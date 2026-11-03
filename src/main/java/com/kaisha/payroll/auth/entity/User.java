@@ -1,6 +1,8 @@
+
 package com.kaisha.payroll.auth.entity;
 
 import com.kaisha.payroll.company.entity.Company;
+import com.kaisha.payroll.employee.entity.Employee;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +10,15 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_user_employee",
+                        columnNames = {"employee_id"}
+                )
+        }
+)
 public class User {
 
     @Id
@@ -51,6 +61,15 @@ public class User {
             nullable = false
     )
     private Company company;
+
+    // STAFF account linked to one Employee.
+    // ADMIN accounts can leave this null.
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "employee_id",
+            unique = true
+    )
+    private Employee employee;
 
     @Column(nullable = false)
     private boolean active = true;

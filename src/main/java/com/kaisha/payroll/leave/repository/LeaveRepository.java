@@ -39,4 +39,13 @@ public interface LeaveRepository extends JpaRepository<Leave, Long> {
             LocalDate requestedEnd,
             LocalDate requestedStart
     );
+
+    List<Leave> findByCompanyIdAndEmployee_EmployeeIdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            String companyId,
+            String employeeId,
+            LeaveStatus status,
+            LocalDate monthEnd,
+            LocalDate monthStart
+    );
+
 }
