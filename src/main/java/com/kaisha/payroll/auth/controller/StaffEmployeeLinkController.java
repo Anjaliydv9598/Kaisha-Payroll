@@ -11,8 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth/staff")
@@ -29,12 +31,11 @@ public class StaffEmployeeLinkController {
         this.userRepository = userRepository;
     }
 
-    // Get authenticated ADMIN
     private User getAdmin(Authentication authentication) {
 
         if (authentication == null ||
                 !authentication.isAuthenticated()) {
-            throw new org.springframework.web.server.ResponseStatusException(
+            throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Authentication required"
             );
@@ -42,22 +43,20 @@ public class StaffEmployeeLinkController {
 
         User admin = userRepository
                 .findByUsernameWithCompany(authentication.getName())
-                .orElseThrow(() ->
-                        new org.springframework.web.server.ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "User not found"
-                        )
-                );
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found"
+                ));
 
         if (admin.getRole() != Role.ADMIN) {
-            throw new org.springframework.web.server.ResponseStatusException(
+            throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Only ADMIN can manage Staff Login"
             );
         }
 
         if (admin.getCompany() == null) {
-            throw new org.springframework.web.server.ResponseStatusException(
+            throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Admin is not linked to a company"
             );
@@ -66,12 +65,11 @@ public class StaffEmployeeLinkController {
         return admin;
     }
 
-    // GET: Fetch active employees for Staff Login
+    // GET: Existing employees and login status
     @GetMapping("/employees")
     public ResponseEntity<List<StaffEmployeeResponse>> getEmployees(
             Authentication authentication
     ) {
-
         User admin = getAdmin(authentication);
 
         String companyId = admin.getCompany().getCompanyId();
@@ -81,13 +79,12 @@ public class StaffEmployeeLinkController {
         );
     }
 
-    // POST: Create Staff Login
+    // POST: Create staff login
     @PostMapping
     public ResponseEntity<String> createStaff(
             @RequestBody CreateStaffRequest request,
             Authentication authentication
     ) {
-
         User admin = getAdmin(authentication);
 
         String companyId = admin.getCompany().getCompanyId();
@@ -97,5 +94,20 @@ public class StaffEmployeeLinkController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body("Staff login created successfully");
+    }
+
+    // GET: View complete employee details
+    @GetMapping("/employees/{employeeDbId}/details")
+    public ResponseEntity<Map<String, Object>> getEmployeeDetails(
+            @PathVariable Long employeeDbId,
+            Authentication authentication
+    ) {
+        User admin = getAdmin(authentication);
+
+        String companyId = admin.getCompany().getCompanyId();
+
+        return ResponseEntity.ok(
+                staffService.getEmployeeDetails(employeeDbId, companyId)
+        );
     }
 }
