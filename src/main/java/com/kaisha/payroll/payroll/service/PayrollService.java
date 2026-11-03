@@ -44,7 +44,7 @@ public class PayrollService {
     }
 
     // =====================================================
-    // PROCESS PAYROLL WITH ATTENDANCE
+    // PROCESS PAYROLL WITH ATTENDANCE AND LEAVE
     // =====================================================
 
     public List<PayrollResponse> processPayroll(String payPeriod) {
@@ -80,9 +80,19 @@ public class PayrollService {
                             )
                             .orElseGet(Payroll::new);
 
+            // Prevent processing cancelled payroll.
             if (payroll.getStatus() == Payroll.PayrollStatus.CANCELLED) {
-                throw new RuntimeException(
+                throw new IllegalStateException(
                         "Payroll was cancelled for employee "
+                                + salary.getEmployeeId()
+                                + " in " + payPeriod
+                );
+            }
+
+            // Prevent overwriting an existing processed snapshot.
+            if (payroll.getStatus() == Payroll.PayrollStatus.PROCESSED) {
+                throw new IllegalStateException(
+                        "Payroll is already processed for employee "
                                 + salary.getEmployeeId()
                                 + " in " + payPeriod
                 );
@@ -90,7 +100,8 @@ public class PayrollService {
 
             BigDecimal grossSalary = salary.getGrossSalary();
 
-            if (grossSalary == null || grossSalary.compareTo(BigDecimal.ZERO) < 0) {
+            if (grossSalary == null
+                    || grossSalary.compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalArgumentException(
                         "Invalid gross salary for employee "
                                 + salary.getEmployeeId()
@@ -102,7 +113,7 @@ public class PayrollService {
                             ? BigDecimal.ZERO
                             : salary.getTotalDeductions();
 
-            // Get employee's attendance summary.
+            // Get monthly attendance and leave summary.
             AttendanceMonthlySummary attendance =
                     attendanceMonthlyService.getMonthlySummary(
                             salary.getEmployeeId(),
@@ -116,7 +127,7 @@ public class PayrollService {
                             ? BigDecimal.ZERO
                             : attendance.getAttendanceDeduction();
 
-            // Existing salary deductions + attendance deductions.
+            // Salary deductions + attendance/unpaid leave deductions.
             BigDecimal totalDeductions =
                     salaryDeductions.add(attendanceDeduction)
                             .setScale(2, RoundingMode.HALF_UP);
@@ -132,23 +143,26 @@ public class PayrollService {
                 );
             }
 
-            // Save payroll information.
+            // Save payroll company and employee details.
             payroll.setCompanyId(companyId);
             payroll.setEmployeeId(salary.getEmployeeId());
             payroll.setPayPeriod(payPeriod);
 
+            // Save salary calculations.
             payroll.setGrossSalary(grossSalary);
             payroll.setAttendanceDeduction(attendanceDeduction);
             payroll.setOtherDeductions(salaryDeductions);
             payroll.setTotalDeductions(totalDeductions);
             payroll.setNetSalary(netSalary);
 
-            // Attendance snapshot.
+            // Save attendance snapshot.
             payroll.setPresentDays(attendance.getPresentDays());
             payroll.setAbsentDays(attendance.getAbsentDays());
             payroll.setHalfDays(attendance.getHalfDays());
             payroll.setPaidHolidays(attendance.getPaidHolidays());
             payroll.setWeeklyOffs(attendance.getWeeklyOffs());
+
+            // Save leave snapshot.
             payroll.setPaidLeaveDays(attendance.getPaidLeaveDays());
             payroll.setUnpaidLeaveDays(attendance.getUnpaidLeaveDays());
 
@@ -162,7 +176,7 @@ public class PayrollService {
     }
 
     // =====================================================
-    // GET ALL
+    // GET ALL PAYROLL
     // =====================================================
 
     @Transactional(readOnly = true)
@@ -178,7 +192,7 @@ public class PayrollService {
     }
 
     // =====================================================
-    // GET BY PERIOD
+    // GET PAYROLL BY PERIOD
     // =====================================================
 
     @Transactional(readOnly = true)
@@ -199,7 +213,7 @@ public class PayrollService {
     }
 
     // =====================================================
-    // GET BY ID
+    // GET PAYROLL BY ID
     // =====================================================
 
     @Transactional(readOnly = true)
@@ -216,14 +230,14 @@ public class PayrollService {
     }
 
     // =====================================================
-    // GET BY EMPLOYEE
+    // GET PAYROLL BY EMPLOYEE
     // =====================================================
 
     @Transactional(readOnly = true)
     public List<PayrollResponse> getByEmployee(String employeeId) {
 
         if (employeeId == null || employeeId.isBlank()) {
-            throw new RuntimeException("Employee ID is required");
+            throw new IllegalArgumentException("Employee ID is required");
         }
 
         String companyId = getCompanyId();
@@ -239,7 +253,7 @@ public class PayrollService {
     }
 
     // =====================================================
-    // CANCEL
+    // CANCEL PAYROLL
     // =====================================================
 
     public PayrollResponse cancel(Long payrollId) {
@@ -252,7 +266,9 @@ public class PayrollService {
         );
 
         if (payroll.getStatus() == Payroll.PayrollStatus.CANCELLED) {
-            throw new RuntimeException("Payroll is already cancelled");
+            throw new IllegalStateException(
+                    "Payroll is already cancelled"
+            );
         }
 
         payroll.setStatus(Payroll.PayrollStatus.CANCELLED);
@@ -269,7 +285,7 @@ public class PayrollService {
             String companyId) {
 
         if (payrollId == null) {
-            throw new RuntimeException("Payroll ID is required");
+            throw new IllegalArgumentException("Payroll ID is required");
         }
 
         return payrollRepository
@@ -280,15 +296,15 @@ public class PayrollService {
     }
 
     // =====================================================
-    // VALIDATE PERIOD
+    // VALIDATE PAY PERIOD
     // =====================================================
 
     private void validatePayPeriod(String payPeriod) {
 
-        if (payPeriod == null ||
-                !payPeriod.matches("\\d{4}-\\d{2}")) {
+        if (payPeriod == null
+                || !payPeriod.matches("\\d{4}-\\d{2}")) {
 
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Pay period must be YYYY-MM"
             );
         }
@@ -296,7 +312,7 @@ public class PayrollService {
         int month = Integer.parseInt(payPeriod.substring(5, 7));
 
         if (month < 1 || month > 12) {
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Pay period month must be between 01 and 12"
             );
         }
@@ -330,6 +346,7 @@ public class PayrollService {
         response.setHalfDays(payroll.getHalfDays());
         response.setPaidHolidays(payroll.getPaidHolidays());
         response.setWeeklyOffs(payroll.getWeeklyOffs());
+
         response.setPaidLeaveDays(payroll.getPaidLeaveDays());
         response.setUnpaidLeaveDays(payroll.getUnpaidLeaveDays());
 
