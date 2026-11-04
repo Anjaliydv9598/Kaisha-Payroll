@@ -21,6 +21,7 @@ import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,22 +42,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
     }
 
-    // Skip only public authentication endpoints.
-    // Staff management endpoints MUST pass through this filter.
+    // Skip public endpoints
     @Override
     protected boolean shouldNotFilter(
             HttpServletRequest request
     ) {
+
         String path = request.getServletPath();
 
-        if (path.equals("/api/auth/register")
-                || path.equals("/api/auth/login")
-                || path.equals("/api/auth/admin-login")
-                || path.equals("/api/auth/staff-login")) {
+        if (request.getMethod().equalsIgnoreCase("OPTIONS")) {
             return true;
         }
 
-        return path.startsWith("/api/auth/forgot-password/");
+        return path.equals("/api/auth/register")
+                || path.equals("/api/auth/login")
+                || path.equals("/api/auth/admin-login")
+                || path.equals("/api/auth/staff-login")
+                || path.equals("/api/auth/registration-status")
+                || path.startsWith("/api/auth/forgot-password/");
     }
 
     @Override
@@ -84,6 +87,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
+
             Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
@@ -106,9 +110,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
 
-                String authority = role.startsWith("ROLE_")
-                        ? role
-                        : "ROLE_" + role;
+                // Normalize role
+                String normalizedRole = role
+                        .trim()
+                        .toUpperCase(Locale.ROOT);
+
+                if (normalizedRole.startsWith("ROLE_")) {
+                    normalizedRole =
+                            normalizedRole.substring(5);
+                }
+
+                String authority = "ROLE_" + normalizedRole;
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
