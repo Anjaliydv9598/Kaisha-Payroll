@@ -106,20 +106,12 @@ public class UserService {
 
         User user = new User();
 
-        // Email is used as username.
         user.setUsername(email);
         user.setEmail(email);
-
-        // Store encoded password only.
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-        // Public registration creates ADMIN only.
         user.setRole(Role.ADMIN);
-
         user.setCompany(company);
         user.setActive(true);
-
-        // Admin does not need an Employee relationship.
         user.setEmployee(null);
 
         return userRepository.save(user);
@@ -127,17 +119,29 @@ public class UserService {
 
     // ==================================================
     // FIND USER FOR LOGIN
+    // Supports Employee ID, Email and Mobile Number
     // ==================================================
 
     public User findByIdentifier(String identifier) {
 
         if (identifier == null || identifier.trim().isEmpty()) {
-            throw new RuntimeException("Email is required");
+            throw new RuntimeException(
+                    "Employee ID or email is required");
         }
 
         String value = identifier.trim();
 
+        // 1. Search by username (Employee ID for STAFF)
         User user = userRepository
+                .findByUsername(value)
+                .orElse(null);
+
+        if (user != null) {
+            return user;
+        }
+
+        // 2. Search by email
+        user = userRepository
                 .findByEmail(value)
                 .orElse(null);
 
@@ -145,7 +149,7 @@ public class UserService {
             return user;
         }
 
-        // Optional phone login.
+        // 3. Search by mobile number
         user = userRepository
                 .findByMobileNumber(value)
                 .orElse(null);

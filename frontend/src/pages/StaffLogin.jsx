@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -25,30 +26,21 @@ function StaffLogin() {
         setError("");
     };
 
-
     const handleSubmit = async (e) => {
 
         e.preventDefault();
-
         setError("");
 
-        const identifier =
-            formData.identifier.trim();
-
-        const password =
-            formData.password;
+        const identifier = formData.identifier.trim();
+        const password = formData.password;
 
         if (!identifier) {
-
-            setError("Please enter your email.");
-
+            setError("Please enter your Employee ID or email.");
             return;
         }
 
         if (!password) {
-
             setError("Please enter your password.");
-
             return;
         }
 
@@ -56,8 +48,12 @@ function StaffLogin() {
 
         try {
 
+            const apiBaseUrl =
+                import.meta.env.VITE_API_BASE_URL ||
+                "http://localhost:8080/api";
+
             const response = await fetch(
-                import.meta.env.VITE_API_BASE_URL + "/auth/staff-login",
+                `${apiBaseUrl}/auth/staff-login`,
                 {
                     method: "POST",
 
@@ -76,59 +72,35 @@ function StaffLogin() {
             const data = await response.json();
 
             if (!response.ok) {
-
                 throw new Error(
                     data.message ||
-                    "Invalid staff email or password."
+                    "Invalid Employee ID/email or password."
                 );
             }
 
-
             if (!data.token) {
-
                 throw new Error(
                     "Login successful, but authentication token was not received."
                 );
             }
 
-
             if (data.role !== "STAFF") {
-
                 throw new Error(
                     "This account is not a STAFF account."
                 );
             }
 
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("username", data.username);
+            localStorage.setItem("role", data.role);
 
-            localStorage.setItem(
-                "token",
-                data.token
-            );
-
-            localStorage.setItem(
-                "username",
-                data.username
-            );
-
-            localStorage.setItem(
-                "role",
-                data.role
-            );
-
-
-            navigate(
-                "/staff-dashboard",
-                {
-                    replace: true
-                }
-            );
+            navigate("/staff-dashboard", {
+                replace: true
+            });
 
         } catch (err) {
 
-            console.error(
-                "STAFF LOGIN ERROR:",
-                err
-            );
+            console.error("STAFF LOGIN ERROR:", err);
 
             setError(
                 err.message ||
@@ -136,11 +108,9 @@ function StaffLogin() {
             );
 
         } finally {
-
             setLoading(false);
         }
     };
-
 
     return (
         <div className="auth-page">
@@ -153,16 +123,11 @@ function StaffLogin() {
                         K
                     </div>
 
-                    <h1>
-                        Kaisha Payroll
-                    </h1>
+                    <h1>Kaisha Payroll</h1>
 
-                    <p>
-                        Staff Login
-                    </p>
+                    <p>Staff Login</p>
 
                 </div>
-
 
                 <form
                     onSubmit={handleSubmit}
@@ -172,22 +137,21 @@ function StaffLogin() {
                     <div className="form-group">
 
                         <label htmlFor="identifier">
-                            Staff Email
+                            Employee ID / Staff Email
                         </label>
 
                         <input
                             id="identifier"
                             name="identifier"
-                            type="email"
-                            placeholder="Enter staff email"
+                            type="text"
+                            placeholder="Enter Employee ID or staff email"
                             value={formData.identifier}
                             onChange={handleChange}
                             disabled={loading}
-                            autoComplete="new-email"
+                            autoComplete="username"
                         />
 
                     </div>
-
 
                     <div className="form-group">
 
@@ -203,11 +167,10 @@ function StaffLogin() {
                             value={formData.password}
                             onChange={handleChange}
                             disabled={loading}
-                            autoComplete="new-password"
+                            autoComplete="current-password"
                         />
 
                     </div>
-
 
                     <div className="forgot-password">
 
@@ -217,13 +180,11 @@ function StaffLogin() {
 
                     </div>
 
-
                     {error && (
                         <div className="error-message">
                             {error}
                         </div>
                     )}
-
 
                     <button
                         type="submit"
@@ -237,7 +198,6 @@ function StaffLogin() {
                     </button>
 
                 </form>
-
 
                 <div className="auth-footer">
 
