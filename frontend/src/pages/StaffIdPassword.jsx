@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import "./StaffIdPassword.css";
 import AdminLayout from "../pages/AdminLayout";
@@ -15,45 +14,7 @@ const API_BASE_URL = (
 const STAFF_API = `${API_BASE_URL}/auth/staff`;
 
 const getToken = () => localStorage.getItem("token");
-const [showViewModal, setShowViewModal] = useState(false);
-const [viewEmployee, setViewEmployee] = useState(null);
-const [viewLoading, setViewLoading] = useState(false);
-const [viewError, setViewError] = useState("");
-const handleViewEmployee = async (employee) => {
-    try {
-        setViewLoading(true);
-        setViewError("");
-        setViewEmployee(null);
-        setShowViewModal(true);
 
-        const token = getToken();
-
-        const response = await fetch(
-            `${STAFF_API}/employees/${employee.id}/details`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
-
-        const data = await readResponse(response);
-
-        if (!response.ok) {
-            throw new Error(
-                getErrorMessage(data, "Unable to load employee details.")
-            );
-        }
-
-        setViewEmployee(data);
-
-    } catch (err) {
-        setViewError(err.message || "Unable to load employee details.");
-    } finally {
-        setViewLoading(false);
-    }
-};
 // ==========================================
 // RESPONSE HANDLER
 // ==========================================
@@ -88,6 +49,10 @@ const getErrorMessage = (data, fallback) => {
 const StaffIdPassword = () => {
 
     const navigate = useNavigate();
+
+    // ==========================================
+    // STATE MANAGEMENT
+    // ==========================================
 
     // Employee data
     const [employees, setEmployees] = useState([]);
