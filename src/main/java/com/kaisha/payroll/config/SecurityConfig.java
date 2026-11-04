@@ -32,9 +32,7 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                .cors(cors -> {
-                })
-
+                .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session ->
@@ -45,17 +43,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Allow CORS preflight requests
+                        // Allow browser CORS preflight requests
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
-
-                        // STAFF MANAGEMENT: ADMIN ONLY
-                        .requestMatchers(
-                                "/api/auth/staff",
-                                "/api/auth/staff/**"
-                        ).hasRole("ADMIN")
 
                         // Public authentication endpoints
                         .requestMatchers(
@@ -63,10 +55,11 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/admin-login",
                                 "/api/auth/staff-login",
+                                "/api/auth/registration-status",
                                 "/api/auth/forgot-password/**"
                         ).permitAll()
 
-                        // Support query
+                        // Public support endpoint
                         .requestMatchers(
                                 "/api/support/query"
                         ).permitAll()
@@ -77,12 +70,17 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
+                        // Staff management: ADMIN only
+                        .requestMatchers(
+                                "/api/auth/staff",
+                                "/api/auth/staff/**"
+                        ).hasRole("ADMIN")
+
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
 
                 .formLogin(form -> form.disable())
-
                 .httpBasic(basic -> basic.disable())
 
                 .addFilterBefore(
