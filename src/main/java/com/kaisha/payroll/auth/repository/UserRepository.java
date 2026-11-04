@@ -2,7 +2,7 @@ package com.kaisha.payroll.auth.repository;
 
 import com.kaisha.payroll.auth.entity.Role;
 import com.kaisha.payroll.auth.entity.User;
-
+import com.kaisha.payroll.employee.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -61,5 +61,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findFirstByCompany_CompanyIdAndRole(
             String companyId,
             Role role
+    );
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN FETCH u.company
+        LEFT JOIN FETCH u.employee
+        WHERE u.username = :username
+        """)
+    Optional<User> findByUsernameWithCompanyAndEmployee(
+            @Param("username") String username
     );
 }

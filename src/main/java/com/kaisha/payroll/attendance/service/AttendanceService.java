@@ -1,3 +1,4 @@
+
 package com.kaisha.payroll.attendance.service;
 
 import com.kaisha.payroll.attendance.dto.AttendanceRequest;
@@ -10,7 +11,9 @@ import com.kaisha.payroll.auth.entity.User;
 import com.kaisha.payroll.company.entity.Company;
 import com.kaisha.payroll.employee.entity.Employee;
 import com.kaisha.payroll.employee.repository.EmployeeRepository;
+
 import jakarta.transaction.Transactional;
+
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,7 +43,7 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // GET ALL
+    // GET ALL ATTENDANCE
     // ---------------------------------------------------------
 
     public List<AttendanceResponse> getAllAttendance(String email) {
@@ -57,7 +60,7 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // GET BY ID
+    // GET ATTENDANCE BY ID
     // ---------------------------------------------------------
 
     public AttendanceResponse getAttendance(
@@ -67,17 +70,16 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Attendance attendance =
-                attendanceRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                company.getCompanyId()
+        Attendance attendance = attendanceRepository
+                .findByIdAndCompany_CompanyId(
+                        id,
+                        company.getCompanyId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Attendance record not found"
                         )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Attendance record not found"
-                                )
-                        );
+                );
 
         return new AttendanceResponse(attendance);
     }
@@ -104,7 +106,147 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // GET BY DATE
+    // STAFF: GET ATTENDANCE FROM JOINING DATE
+    // ---------------------------------------------------------
+
+    public List<AttendanceResponse> getMyAttendance(String username) {
+
+        Employee employee = getStaffEmployee(username);
+
+        LocalDate joiningDate = employee.getJoiningDate();
+        LocalDate today = LocalDate.now();
+
+        if (joiningDate == null) {
+            throw new RuntimeException(
+                    "Joining date is not set for this employee"
+            );
+        }
+
+        if (joiningDate.isAfter(today)) {
+            return List.of();
+        }
+
+        return attendanceRepository
+                .findByEmployeeAndAttendanceDateBetween(
+                        employee,
+                        joiningDate,
+                        today
+                )
+                .stream()
+                .map(AttendanceResponse::new)
+                .toList();
+    }
+
+    // ---------------------------------------------------------
+    // STAFF: PUNCH IN
+    // ---------------------------------------------------------
+
+    public AttendanceResponse staffPunchIn(String username) {
+
+        Employee employee = getStaffEmployee(username);
+
+        String companyId = employee.getCompany().getCompanyId();
+        LocalDate today = LocalDate.now();
+
+        if (employee.getJoiningDate() == null ||
+                today.isBefore(employee.getJoiningDate())) {
+
+            throw new RuntimeException(
+                    "Attendance cannot be marked before the joining date"
+            );
+        }
+
+        Attendance attendance = attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employee.getEmployeeId(),
+                        companyId,
+                        today
+                )
+                .orElse(null);
+
+        if (attendance == null) {
+
+            attendance = new Attendance();
+
+            attendance.setEmployee(employee);
+            attendance.setCompany(employee.getCompany());
+            attendance.setAttendanceDate(today);
+
+        } else if (attendance.getPunchIn() != null) {
+
+            throw new RuntimeException(
+                    "You have already punched in today"
+            );
+        }
+
+        attendance.setPunchIn(LocalTime.now());
+        attendance.setStatus(AttendanceStatus.MISSING_PUNCH);
+        attendance.setModifiedBy(username);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        return new AttendanceResponse(
+                attendanceRepository.save(attendance)
+        );
+    }
+
+    // ---------------------------------------------------------
+    // STAFF: PUNCH OUT
+    // ---------------------------------------------------------
+
+    public AttendanceResponse staffPunchOut(String username) {
+
+        Employee employee = getStaffEmployee(username);
+
+        if (employee.getJoiningDate() == null ||
+                LocalDate.now().isBefore(employee.getJoiningDate())) {
+
+            throw new RuntimeException(
+                    "Attendance cannot be marked before the joining date"
+            );
+        }
+
+        Attendance attendance = attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employee.getEmployeeId(),
+                        employee.getCompany().getCompanyId(),
+                        LocalDate.now()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "You have not punched in today"
+                        )
+                );
+
+        if (attendance.getPunchIn() == null) {
+
+            throw new RuntimeException(
+                    "You have not punched in today"
+            );
+        }
+
+        if (attendance.getPunchOut() != null) {
+
+            throw new RuntimeException(
+                    "You have already punched out today"
+            );
+        }
+
+        attendance.setPunchOut(LocalTime.now());
+        attendance.setStatus(AttendanceStatus.PRESENT);
+        attendance.setModifiedBy(username);
+        attendance.setModifiedAt(LocalDateTime.now());
+
+        calculateWorkingHours(attendance);
+
+        return new AttendanceResponse(
+                attendanceRepository.save(attendance)
+        );
+    }
+
+    // ---------------------------------------------------------
+    // GET ATTENDANCE BY DATE
     // ---------------------------------------------------------
 
     public List<AttendanceResponse> getByDate(
@@ -125,7 +267,7 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // GET DATE RANGE
+    // GET ATTENDANCE BY DATE RANGE
     // ---------------------------------------------------------
 
     public List<AttendanceResponse> getByDateRange(
@@ -135,12 +277,14 @@ public class AttendanceService {
     ) {
 
         if (from == null || to == null) {
+
             throw new RuntimeException(
                     "From date and to date are required"
             );
         }
 
         if (from.isAfter(to)) {
+
             throw new RuntimeException(
                     "From date cannot be after to date"
             );
@@ -172,11 +316,10 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Employee employee =
-                getEmployee(
-                        request.getEmployeeId(),
-                        company.getCompanyId()
-                );
+        Employee employee = getEmployee(
+                request.getEmployeeId(),
+                company.getCompanyId()
+        );
 
         LocalDate date = request.getAttendanceDate();
 
@@ -222,8 +365,7 @@ public class AttendanceService {
 
         calculateWorkingHours(attendance);
 
-        Attendance saved =
-                attendanceRepository.save(attendance);
+        Attendance saved = attendanceRepository.save(attendance);
 
         return new AttendanceResponse(saved);
     }
@@ -242,28 +384,22 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Attendance attendance =
-                attendanceRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                company.getCompanyId()
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Attendance record not found"
-                                )
-                        );
-
-        Employee employee =
-                getEmployee(
-                        request.getEmployeeId(),
+        Attendance attendance = attendanceRepository
+                .findByIdAndCompany_CompanyId(
+                        id,
                         company.getCompanyId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Attendance record not found"
+                        )
                 );
 
-        /*
-         * If employee/date is changed, make sure another
-         * attendance record doesn't already exist.
-         */
+        Employee employee = getEmployee(
+                request.getEmployeeId(),
+                company.getCompanyId()
+        );
+
         attendanceRepository
                 .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
                         employee.getEmployeeId(),
@@ -284,6 +420,7 @@ public class AttendanceService {
                 });
 
         attendance.setEmployee(employee);
+
         attendance.setAttendanceDate(
                 request.getAttendanceDate()
         );
@@ -319,7 +456,7 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // DELETE
+    // DELETE ATTENDANCE
     // ---------------------------------------------------------
 
     public void deleteAttendance(
@@ -329,23 +466,22 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Attendance attendance =
-                attendanceRepository
-                        .findByIdAndCompany_CompanyId(
-                                id,
-                                company.getCompanyId()
+        Attendance attendance = attendanceRepository
+                .findByIdAndCompany_CompanyId(
+                        id,
+                        company.getCompanyId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Attendance record not found"
                         )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Attendance record not found"
-                                )
-                        );
+                );
 
         attendanceRepository.delete(attendance);
     }
 
     // ---------------------------------------------------------
-    // PUNCH IN
+    // ADMIN: PUNCH IN FOR EMPLOYEE
     // ---------------------------------------------------------
 
     public AttendanceResponse punchIn(
@@ -355,22 +491,20 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Employee employee =
-                getEmployee(
-                        employeeId,
-                        company.getCompanyId()
-                );
+        Employee employee = getEmployee(
+                employeeId,
+                company.getCompanyId()
+        );
 
         LocalDate today = LocalDate.now();
 
-        Attendance attendance =
-                attendanceRepository
-                        .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
-                                employeeId,
-                                company.getCompanyId(),
-                                today
-                        )
-                        .orElse(null);
+        Attendance attendance = attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employeeId,
+                        company.getCompanyId(),
+                        today
+                )
+                .orElse(null);
 
         if (attendance == null) {
 
@@ -390,13 +524,12 @@ public class AttendanceService {
         attendance.setPunchIn(LocalTime.now());
 
         if (attendance.getPunchOut() != null) {
-            attendance.setStatus(
-                    AttendanceStatus.PRESENT
-            );
+
+            attendance.setStatus(AttendanceStatus.PRESENT);
+
         } else {
-            attendance.setStatus(
-                    AttendanceStatus.MISSING_PUNCH
-            );
+
+            attendance.setStatus(AttendanceStatus.MISSING_PUNCH);
         }
 
         attendance.setModifiedBy(email);
@@ -410,7 +543,7 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // PUNCH OUT
+    // ADMIN: PUNCH OUT FOR EMPLOYEE
     // ---------------------------------------------------------
 
     public AttendanceResponse punchOut(
@@ -420,18 +553,17 @@ public class AttendanceService {
 
         Company company = getCompany(email);
 
-        Attendance attendance =
-                attendanceRepository
-                        .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
-                                employeeId,
-                                company.getCompanyId(),
-                                LocalDate.now()
+        Attendance attendance = attendanceRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyIdAndAttendanceDate(
+                        employeeId,
+                        company.getCompanyId(),
+                        LocalDate.now()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Employee has not punched in today"
                         )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Employee has not punched in today"
-                                )
-                        );
+                );
 
         if (attendance.getPunchIn() == null) {
 
@@ -449,9 +581,7 @@ public class AttendanceService {
 
         attendance.setPunchOut(LocalTime.now());
 
-        attendance.setStatus(
-                AttendanceStatus.PRESENT
-        );
+        attendance.setStatus(AttendanceStatus.PRESENT);
 
         attendance.setModifiedBy(email);
         attendance.setModifiedAt(LocalDateTime.now());
@@ -464,48 +594,31 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // MISSING PUNCH -> ABSENT AT 11 PM
+    // MISSING PUNCH -> ABSENT
+    // NOTE: This method does not schedule itself at 11 PM.
     // ---------------------------------------------------------
 
     public int markMissingPunchesAbsent() {
 
         LocalDate today = LocalDate.now();
 
-        /*
-         * We need company IDs because Attendance is
-         * company-specific.
-         *
-         * The controller/admin can also trigger this manually.
-         */
-        List<Attendance> records =
-                attendanceRepository
-                        .findAll()
-                        .stream()
-                        .filter(a ->
-                                today.equals(
-                                        a.getAttendanceDate()
-                                )
-                                        &&
-                                        a.getStatus()
-                                                == AttendanceStatus.MISSING_PUNCH
-                        )
-                        .toList();
+        List<Attendance> records = attendanceRepository
+                .findAll()
+                .stream()
+                .filter(a ->
+                        today.equals(a.getAttendanceDate())
+                                &&
+                                a.getStatus() == AttendanceStatus.MISSING_PUNCH
+                )
+                .toList();
 
         int updated = 0;
 
         for (Attendance attendance : records) {
 
-            attendance.setStatus(
-                    AttendanceStatus.ABSENT
-            );
-
-            attendance.setModifiedBy(
-                    "SYSTEM"
-            );
-
-            attendance.setModifiedAt(
-                    LocalDateTime.now()
-            );
+            attendance.setStatus(AttendanceStatus.ABSENT);
+            attendance.setModifiedBy("SYSTEM");
+            attendance.setModifiedAt(LocalDateTime.now());
 
             attendanceRepository.save(attendance);
 
@@ -516,19 +629,69 @@ public class AttendanceService {
     }
 
     // ---------------------------------------------------------
-    // HELPERS
+    // GET AUTHENTICATED STAFF EMPLOYEE
+    // ---------------------------------------------------------
+
+    private Employee getStaffEmployee(String username) {
+
+        User user = userRepository
+                .findByUsernameWithCompanyAndEmployee(username)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Logged-in staff user not found"
+                        )
+                );
+
+        if (user.getRole() !=
+                com.kaisha.payroll.auth.entity.Role.STAFF) {
+
+            throw new RuntimeException(
+                    "Only staff users can access this operation"
+            );
+        }
+
+        if (!user.isActive()) {
+
+            throw new RuntimeException(
+                    "Your staff account is inactive"
+            );
+        }
+
+        if (user.getEmployee() == null) {
+
+            throw new RuntimeException(
+                    "No employee record is linked to your login"
+            );
+        }
+
+        Employee employee = user.getEmployee();
+
+        if (employee.getCompany() == null ||
+                user.getCompany() == null ||
+                !employee.getCompany().getCompanyId()
+                        .equals(user.getCompany().getCompanyId())) {
+
+            throw new RuntimeException(
+                    "Employee and staff account company do not match"
+            );
+        }
+
+        return employee;
+    }
+
+    // ---------------------------------------------------------
+    // GET COMPANY
     // ---------------------------------------------------------
 
     private Company getCompany(String email) {
 
-        User user =
-                userRepository
-                        .findByEmail(email)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Logged-in user not found"
-                                )
-                        );
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Logged-in user not found"
+                        )
+                );
 
         if (user.getCompany() == null) {
 
@@ -539,6 +702,10 @@ public class AttendanceService {
 
         return user.getCompany();
     }
+
+    // ---------------------------------------------------------
+    // GET EMPLOYEE
+    // ---------------------------------------------------------
 
     private Employee getEmployee(
             String employeeId,
@@ -560,18 +727,18 @@ public class AttendanceService {
                 )
                 .orElseThrow(() ->
                         new RuntimeException(
-                                "Employee not found: "
-                                        + employeeId
+                                "Employee not found: " + employeeId
                         )
                 );
     }
 
-    private void validateRequest(
-            AttendanceRequest request
-    ) {
+    // ---------------------------------------------------------
+    // VALIDATE ATTENDANCE REQUEST
+    // ---------------------------------------------------------
+
+    private void validateRequest(AttendanceRequest request) {
 
         if (request == null) {
-
             throw new RuntimeException(
                     "Attendance request is required"
             );
@@ -594,8 +761,7 @@ public class AttendanceService {
 
         if (request.getPunchIn() != null &&
                 request.getPunchOut() != null &&
-                request.getPunchOut()
-                        .isBefore(request.getPunchIn())) {
+                request.getPunchOut().isBefore(request.getPunchIn())) {
 
             throw new RuntimeException(
                     "Punch out cannot be before punch in"
@@ -603,16 +769,16 @@ public class AttendanceService {
         }
     }
 
+    // ---------------------------------------------------------
+    // DETERMINE ATTENDANCE STATUS
+    // ---------------------------------------------------------
+
     private AttendanceStatus determineStatus(
             LocalTime punchIn,
             LocalTime punchOut,
             AttendanceStatus requestedStatus
     ) {
 
-        /*
-         * Explicit statuses such as LEAVE/HOLIDAY/WEEK_OFF
-         * should be respected.
-         */
         if (requestedStatus == AttendanceStatus.LEAVE ||
                 requestedStatus == AttendanceStatus.HOLIDAY ||
                 requestedStatus == AttendanceStatus.WEEK_OFF ||
@@ -633,9 +799,11 @@ public class AttendanceService {
         return AttendanceStatus.PRESENT;
     }
 
-    private void calculateWorkingHours(
-            Attendance attendance
-    ) {
+    // ---------------------------------------------------------
+    // CALCULATE WORKING HOURS
+    // ---------------------------------------------------------
+
+    private void calculateWorkingHours(Attendance attendance) {
 
         if (attendance.getPunchIn() == null ||
                 attendance.getPunchOut() == null) {
@@ -644,23 +812,22 @@ public class AttendanceService {
             return;
         }
 
-        Duration duration =
-                Duration.between(
-                        attendance.getPunchIn(),
-                        attendance.getPunchOut()
-                );
+        Duration duration = Duration.between(
+                attendance.getPunchIn(),
+                attendance.getPunchOut()
+        );
 
-        double hours =
-                duration.toMinutes() / 60.0;
+        double hours = duration.toMinutes() / 60.0;
 
         attendance.setWorkingHours(
                 BigDecimal.valueOf(hours)
-                        .setScale(
-                                2,
-                                RoundingMode.HALF_UP
-                        )
+                        .setScale(2, RoundingMode.HALF_UP)
         );
     }
+
+    // ---------------------------------------------------------
+    // CLEAN STRING
+    // ---------------------------------------------------------
 
     private String clean(String value) {
 
@@ -670,8 +837,6 @@ public class AttendanceService {
 
         String cleaned = value.trim();
 
-        return cleaned.isEmpty()
-                ? null
-                : cleaned;
+        return cleaned.isEmpty() ? null : cleaned;
     }
 }
