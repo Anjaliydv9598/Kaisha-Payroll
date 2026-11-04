@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# IntelliJ HTTP Client private environment
+http-client.private.env.json

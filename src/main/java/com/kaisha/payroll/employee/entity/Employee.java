@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(
         name = "employees",
@@ -36,4 +38,7 @@ public class Employee {
 
     @Column(name = "details_completed", nullable = false)
     private boolean detailsCompleted = true;
+
+    @Column(name = "joining_date")
+    private LocalDate joiningDate;
 }
